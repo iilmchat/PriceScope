@@ -16,10 +16,11 @@ dist/
 *.db
 *.db-wal
 *.db-shm
-data/
-datasets/
-logs/
-photos/
+# Только корневые каталоги данных (не apps/mobile/lib/data и т.п.)
+/data/
+/datasets/
+/logs/
+/photos/
 *.xlsx
 !*.example.xlsx
 LocalPackages/

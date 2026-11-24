@@ -12,11 +12,11 @@ class SettingsPage extends StatelessWidget {
       appBar: AppBar(title: const Text('Настройки')),
       body: ListView(
         padding: const EdgeInsets.all(16),
-        children: [
-          const Text('Адрес API', style: TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
+        children: const [
+          Text('Адрес API', style: TextStyle(fontWeight: FontWeight.bold)),
+          SizedBox(height: 8),
           SelectableText(AppConfig.apiBaseUrl),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text('Версия: ${AppConfig.version}'),
           const SizedBox(height: 16),
           const Text(
