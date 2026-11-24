@@ -18,7 +18,7 @@ RULES § 2.14 в `docs/development/reports/v0.1/Sxx_<name>.md`,
 | **S03** | Lenta adapter (hub→categories→items→detail); фикстуры; CLI `parse`; импорт в SQLite | PL-001, PL-002, PL-010, PL-011 | ✅ живой импорт 3 товаров, повтор без дублей |
 | **S04** | Alembic (9 таблиц, stamp legacy-БД); пагинация/фильтры/сравнение; error envelope; контрактные тесты | — | ✅ API + миграции, 33 теста |
 | **S05** | Viewer: обзор, товары, карточка, сравнение, импорты, review; HTMX-фрагменты; QA-чеклист | — | ✅ полный UI, 39 тестов |
-| **S06** | Pyaterochka adapter (Camoufox), captcha policy, manual CSV import, fixtures, safety-тесты | PL-003 | второй магазин в сравнении |
+| **S06** | Pyaterochka adapter (BrowserBackend), captcha policy, manual CSV import, фикстуры, safety-тесты | PL-003 | ✅ импорт + 2 сети в сравнении, 48 тестов |
 | **S07** | Normalizer+blocking+matching, review queue, JSONL-экспорт + manifest, метрики качества | PL-006, PL-007 | датасет для моделей |
 | **S08** | Flutter: API client, search, card, compare, favorites, settings; web+android build; release v0.1.0 | — | клиент + релиз |
 
@@ -33,6 +33,7 @@ RULES § 2.14 в `docs/development/reports/v0.1/Sxx_<name>.md`,
 | S03 | ✅ Завершён — [отчёт](development/reports/v0.1/S03_lenta_adapter.md) |
 | S04 | ✅ Завершён — [отчёт](development/reports/v0.1/S04_api_migrations.md) |
 | S05 | ✅ Завершён — [отчёт](development/reports/v0.1/S05_viewer_ui.md) |
-| S06–S08 | ⬜ Не начаты |
+| S06 | ✅ Завершён — [отчёт](development/reports/v0.1/S06_pyaterochka.md) |
+| S07–S08 | ⬜ Не начаты |
 
 Отчёты завершённых спринтов — в `docs/development/reports/v0.1/`.

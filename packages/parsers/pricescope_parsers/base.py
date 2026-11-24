@@ -45,6 +45,7 @@ class ParseContext:
     photos_dir: Path | None = None
     browser_snapshot: dict | None = None  # фикстура / результат браузера (S06)
     location_info: dict | None = None  # метаданные точки, заполняет адаптер (hub)
+    last_raw_sha: str = ""  # sha последнего сохранённого raw snapshot
 
     def check_cancelled(self) -> None:
         """Проверить внешнюю отмену (RULES § 4.5)."""

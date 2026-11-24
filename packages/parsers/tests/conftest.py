@@ -74,7 +74,9 @@ def make_http_client(
     )
 
 
-def make_context(tmp_path: Path, http: httpx.AsyncClient, **overrides: object) -> ParseContext:
+def make_context(
+    tmp_path: Path, http: httpx.AsyncClient | None, **overrides: object
+) -> ParseContext:
     """ParseContext с временным хранилищем raw snapshots."""
     values: dict[str, object] = {
         "lat": 55.3925,

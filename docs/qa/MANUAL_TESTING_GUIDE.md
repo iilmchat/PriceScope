@@ -39,7 +39,8 @@
 | 10 | Viewer → «Сравнение» → выбрать товар | таблица цен по магазинам, разница %, дата | | |
 | 11 | Изменить координаты в «Настройках», повторить сравнение | цены/точка обновились | | |
 | 12 | Viewer → «Импорты» | запись ParseRun со счётчиками и trace_id | | |
-| 13 | `pricescope parse --store pyaterochka` (если доступен) | цены импортированы **или** `failed` с `CAPTCHA_DETECTED` и диагностикой | | |
+| 13 | `pricescope parse --store pyaterochka` (нужны `.[parser5ka]` и `CAMOUFOX_EXECUTABLE_PATH`) | цены импортированы **или** `failed` с `CAPTCHA_DETECTED` и диагностикой | | |
+| 13a | `pricescope parse --store manual --file <csv>` | товары из CSV импортированы без браузера (легальная альтернатива) | | |
 | 14 | Проверить случай CAPTCHA (фикстура/реальный запуск) | парсер **остановлен**, нет попыток обхода, ошибка в ParseRun | | |
 | 15 | Viewer → «Совпадения» → «Один товар» | ProductMatch.status=confirmed, comparison обновился | | |
 | 16 | `pricescope export --name product-matching --version 1` | папка с train/val/test JSONL + manifest + checksums | | |

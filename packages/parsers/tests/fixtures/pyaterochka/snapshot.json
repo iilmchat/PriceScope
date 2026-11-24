@@ -1,0 +1,39 @@
+{
+  "title": "Каталог 5ka.ru",
+  "url": "https://5ka.ru",
+  "body_text": "",
+  "location": {
+    "external_id": "12345",
+    "name": "Пятёрочка Наро-Фоминск",
+    "address": "г. Наро-Фоминск, ул. Ленина, 2"
+  },
+  "categories": [[100, "Красота"], [200, "Продукты"]],
+  "products": {
+    "100": [
+      {
+        "plu": "500001",
+        "name": "Рексона спрей 100 мл",
+        "prices": {"current": 19990, "regular": 24990},
+        "image_links": {"normal": "https://cdn.5ka.ru/500001.png"},
+        "is_available": true,
+        "measure": "100мл"
+      },
+      {
+        "id": "500002",
+        "name": "Шампунь ШАУМА 400мл",
+        "prices": {"price": "249.90", "priceRegular": "299.90"},
+        "image_links": ["https://cdn.5ka.ru/500002.png"],
+        "is_available": true
+      }
+    ],
+    "200": [
+      {
+        "plu": "500003",
+        "name": "Молоко отборное 1 л",
+        "prices": {"current": 8990},
+        "media": {"image_links": {"small": "https://cdn.5ka.ru/500003.png"}},
+        "is_available": false
+      }
+    ]
+  }
+}

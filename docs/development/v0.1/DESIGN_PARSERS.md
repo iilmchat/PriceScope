@@ -117,7 +117,7 @@ ParseContext
 ## § 6. Адаптер Пятёрочки (`pyaterochka`)
 
 **Источник:** сайт `5ka.ru`, браузер Camoufox + `human_requests`
-(наследуюexists код из `ParserPyaterka/parser_pyaterochka_fixed_v5.py`).
+(логика перенесена из `ParserPyaterka/parser_pyaterochka_fixed_v5.py`).
 
 **Политика (обязательная, ADR-006):**
 
@@ -135,11 +135,17 @@ ParseContext
   `CAMOUFOX_EXECUTABLE_PATH`, **не хардкод** в репозитории;
 - чтение `localStorage.DeliveryPanelStore` через адаптер `_get_local_storage_item`
   (поддержка старого/new Playwright API);
-- извлечение каталога — из сетевых ответов страницы (не из DOM-скрейпинга цен,
-  если доступен JSON); • фото — CDN 5ka, сохраняем в `data/photos/pyaterochka/`;
-- конвертация в `ProductObservation` — тот же `Normalizer`, что и у Ленты;
+- извлечение каталога — из ответов API (`Catalog.tree` / `Catalog.products_list`),
+  а не из DOM-скрейпинга цен; снимки сохраняются через `ctx.save_raw`;
+- браузер спроектирован за портом `BrowserBackend` (реализация `CamoufoxBackend`
+  импортируется лениво); тесты подставляют фикстуровый backend;
+- конвертация в `ProductObservation` — цены в копейки, docstring-маппинг полей
+  `plu/id`, `prices.current/regular`, `image_links.normal/small`;
+- фото — CDN 5ka, ссылки сохраняются в observation (скачивание — S07/S08);
+- `raw_ref` берётся из `ParseContext.last_raw_sha` — точный lineage ответа;
 - в v0.1 адаптер работает **только вручную** (`pricescope parse --store pyaterochka`),
-  без фоновых расписаний.
+  без фоновых расписаний; при CAPTCHA — `ParseRun.failed` без обхода.
+- легальная альтернатива без браузера: `pricescope parse --store manual --file <csv>`.
 
 ---
 

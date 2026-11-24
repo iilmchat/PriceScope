@@ -30,7 +30,7 @@ docs/
 ├── qa/
 │   └── MANUAL_TESTING_GUIDE.md  ← ручная приёмка
 └── development/
-    ├── RULES.md                 ← правила разработки (v1.0.2)
+    ├── RULES.md                 ← правила разработки (v1.0.3)
     ├── ARCHITECTURE.md          ← слои, БД, DI, потоки, ADR
     ├── RELEASES.md              ← процесс релиза
     ├── adr/                     ← архитектурные решения (ADR-001…007)
@@ -61,7 +61,7 @@ docs/
 
 ## Разработчикам
 
-- [RULES.md](development/RULES.md) — обязательные правила (v1.0.2).
+- [RULES.md](development/RULES.md) — обязательные правила (v1.0.3).
 - [ARCHITECTURE.md](development/ARCHITECTURE.md) — слои, схема БД, DI, потоки, ADR.
 - [RELEASES.md](development/RELEASES.md) — чек-лист релиза.
 - [ADR-индекс](development/adr/README.md) — архитектурные решения.
