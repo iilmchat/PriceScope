@@ -162,7 +162,26 @@ pricescope parse --store pyaterochka
 pricescope parse --store manual --file data/products.csv
 ```
 
-### 5.4. Проверка импорта
+### 5.4. Импорт исторических данных из Excel и папки photos
+
+Если в корне проекта уже лежит `lenta_prices.xlsx` из старых скриптов
+(и `photos/{id}.png`), перенесите их в БД одной командой:
+
+```powershell
+pricescope import-legacy
+# либо явно: pricescope import-legacy --excel lenta_prices.xlsx --photos photos
+```
+
+Что делает команда:
+- читает Excel через `openpyxl`, мапит копейки/обычную цену/вес/категорию;
+- создаёт `RawSnapshot` по sha256 файла; временем наблюдения считается **mtime файла**;
+- подключает фото как `/legacy-photos/{id}.png` — каталог `photos/` (~10 ГБ)
+  **не копируется**, а монтируется к viewer доступом только для чтения;
+- повторный запуск ничего не дублирует (идемпотентно).
+
+Результат для текущего файла: 31 228 товаров, 23 050 из них с локальным фото.
+
+### 5.5. Проверка импорта
 
 ```powershell
 python -c "import sqlite3; c=sqlite3.connect('data/pricescope.db'); print(c.execute('select count(*) from observations').fetchone()[0])"

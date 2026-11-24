@@ -6,6 +6,11 @@
 
 ## [Unreleased]
 
+### Added
+- `pricescope import-legacy`: перенос строк `lenta_prices.xlsx` в `Observation`
+  с lineage через `RawSnapshot`; legacy-фото отдаются viewer'ом через `/legacy-photos`
+  без копирования ~10 ГБ (PL-015); 2 теста.
+
 ### Fixed
 - Единый порт по умолчанию **8775**: `Settings.port`, Docker Compose, Flutter
   `API_BASE_URL`, CI, скрипты и документация. Страница настроек viewer показывает

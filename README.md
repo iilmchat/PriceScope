@@ -108,6 +108,7 @@ pricescope serve --local
 | `pricescope init-db` | применить Alembic-миграции, создать БД SQLite |
 | `pricescope parse --store lenta --lat … --lon … [--limit N]` | запустить парсер, записать observations (`--limit` — для smoke) |
 | `pricescope parse --store pyaterochka` | ручной запуск браузерного парсера (CAPTCHA → останов) |
+| `pricescope import-legacy` | импорт `lenta_prices.xlsx` + подключение `photos/{id}.png` (без копирования 10 ГБ) |
 | `pricescope serve --local [--host 127.0.0.1] [--port 8775]` | API + viewer |
 | `pricescope export --name product-matching --version 1` | выгрузить датасет JSONL + manifest |
 | `pricescope match --review` | показать очередь спорных сопоставлений |

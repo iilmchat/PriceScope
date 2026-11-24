@@ -5,9 +5,10 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from pricescope_api import __version__
-from pricescope_api.config import Settings, get_settings
+from pricescope_api.config import PROJECT_ROOT, Settings, get_settings
 from pricescope_api.logging import configure_logging
 from pricescope_api.middleware import ObservabilityMiddleware, register_error_handlers
 from pricescope_api.routers import api
@@ -60,6 +61,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         mount_static(app)
     except ImportError:
         pass
+
+    # Legacy-фото отдаём напрямую из каталога проекта (~10 ГБ, копировать нельзя)
+    legacy_photos = PROJECT_ROOT / "photos"
+    if legacy_photos.is_dir():
+        app.mount(
+            "/legacy-photos",
+            StaticFiles(directory=str(legacy_photos)),
+            name="legacy-photos",
+        )
 
     return app
 

@@ -36,6 +36,19 @@ def build_parser() -> argparse.ArgumentParser:
     serve.add_argument("--host", default=None)
     serve.add_argument("--port", type=int, default=None)
 
+    legacy = sub.add_parser("import-legacy", help="импортировать legacy Excel и фото")
+    legacy.add_argument(
+        "--excel",
+        default=None,
+        help="путь к lenta_prices.xlsx (по умолчанию — корень проекта)",
+    )
+    legacy.add_argument(
+        "--photos",
+        default=None,
+        help="каталог photos/{id}.png (по умолчанию — корень проекта)",
+    )
+    legacy.add_argument("--store", default="lenta", help="код магазина в БД")
+
     export = sub.add_parser("export", help="выгрузить датасет")
     export.add_argument("--name", default="product-matching")
     export.add_argument("--version", dest="dataset_version", default="1")
@@ -84,6 +97,27 @@ async def _async_command(args: argparse.Namespace) -> int:
             if result.get("error_code"):
                 print(f"Ошибка: {result['error_code']} — {result.get('error_message') or ''}")
                 return 1
+            return 0
+
+        if args.command == "import-legacy":
+            from pathlib import Path
+
+            from pricescope_api.config import PROJECT_ROOT
+            from pricescope_api.legacy_import import import_legacy_excel
+
+            excel_path = Path(args.excel) if args.excel else PROJECT_ROOT / "lenta_prices.xlsx"
+            photos_dir = Path(args.photos) if args.photos else PROJECT_ROOT / "photos"
+            result = await import_legacy_excel(
+                session,
+                excel_path=excel_path,
+                photos_dir=photos_dir,
+                store_code=args.store,
+            )
+            print(
+                f"Импорт {excel_path.name}: new={result['new']} updated={result['updated']} "
+                f"unchanged={result['unchanged']} skipped={result['skipped']} "
+                f"raw_ref={result['raw_ref'][:12]}…"
+            )
             return 0
 
         if args.command == "export":

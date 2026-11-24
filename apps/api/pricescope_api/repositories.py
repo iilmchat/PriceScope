@@ -136,6 +136,33 @@ async def update_match_decision(
     return match
 
 
+async def create_raw_snapshot(
+    session: AsyncSession,
+    *,
+    sha256: str,
+    store_code: str,
+    uri: str,
+    path: str,
+    parser_version: str,
+    fetched_at: datetime,
+) -> RawSnapshot:
+    """Зарегистрировать источник данных (в т.ч. legacy Excel)."""
+    found = await session.scalar(select(RawSnapshot).where(RawSnapshot.sha256 == sha256))
+    if found is not None:
+        return found
+    snapshot = RawSnapshot(
+        sha256=sha256,
+        store_code=store_code,
+        uri=uri,
+        path=path,
+        parser_version=parser_version,
+        fetched_at=fetched_at,
+    )
+    session.add(snapshot)
+    await session.flush()
+    return snapshot
+
+
 async def create_product_match(
     session: AsyncSession,
     observation_id: int,
