@@ -52,6 +52,10 @@ pricescope serve --local
 
 ### § 3.1. Архитектура и зависимости
 
+> **Статус S08:** клиент реализован (поиск, карточка с `fl_chart`, сравнение,
+> избранное, настройки). Офлайн-хранение избранного в v0.1 — `shared_preferences`;
+> `drift` перенесён на v0.2 (удалён из зависимостей, чтобы не требовать codegen).
+
 ```
 lib/
 ├── main.dart                  # инициализация, flavor-конфиг
@@ -63,8 +67,8 @@ lib/
 │   └── failures.dart
 ├── data/
 │   ├── models/                # ProductDto, ObservationDto, CompareDto (freezed/json_serializable)
-│   ├── repositories/          # RepositoryImpl, Dio-источник + drift-кэш
-│   └── local/                 # drift (SQLite) — избранное, последние запросы
+│   ├── repositories/          # RepositoryImpl, Dio-источник
+│   └── local/                 # shared_preferences — избранное (v0.1)
 ├── domain/
 │   ├── entities/              # Product, PricePoint, Comparison
 │   ├── usecases/              # SearchProducts, GetCompare, GetHistory, ManageFavorites
@@ -79,7 +83,7 @@ lib/
 ```
 
 Зависимости: `flutter_riverpod`, `go_router`, `dio`, `freezed`,
-`json_serializable`, `drift` + `drift_flutter`, `fl_chart`, `mobile_scanner`
+`shared_preferences`, `fl_chart`, `cached_network_image`, `intl`
 (shimmer, cached_network_image — опционально).
 
 ### § 3.2. Экраны MVP
@@ -88,7 +92,7 @@ lib/
 2. **Карточка товара** — атрибуты, фото, история цен (fl_chart), список observation.
 3. **Сравнение** — по выбранному товару/категории: цены по магазинам, «дешевле на X %»,
    дата обновления (observed_at).
-4. **Избранное** — локально в drift; алерты на снижение цены (уведомления — v0.2).
+4. **Избранное** — локально в `shared_preferences`; алерты на снижение цены — v0.2.
 5. **Настройки** — `API_BASE_URL`, таймаут, режим (local/server), очистка кэша.
 
 ### § 3.3. Сборка и flavors

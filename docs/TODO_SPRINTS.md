@@ -20,7 +20,7 @@ RULES § 2.14 в `docs/development/reports/v0.1/Sxx_<name>.md`,
 | **S05** | Viewer: обзор, товары, карточка, сравнение, импорты, review; HTMX-фрагменты; QA-чеклист | — | ✅ полный UI, 39 тестов |
 | **S06** | Pyaterochka adapter (BrowserBackend), captcha policy, manual CSV import, фикстуры, safety-тесты | PL-003 | ✅ импорт + 2 сети в сравнении, 48 тестов |
 | **S07** | Matching (lexical-v1), review queue, JSONL-экспорт + manifest, метрики | PL-006, PL-007 | ✅ датасет и API, 56 тестов |
-| **S08** | Flutter: API client, search, card, compare, favorites, settings; web+android build; release v0.1.0 | — | клиент + релиз |
+| **S08** | Flutter: API client, search, card, compare, favorites, settings; web+android build; release v0.1.0 | — | ✅ клиент + релиз, 56 тестов |
 
 ---
 
@@ -35,6 +35,8 @@ RULES § 2.14 в `docs/development/reports/v0.1/Sxx_<name>.md`,
 | S05 | ✅ Завершён — [отчёт](development/reports/v0.1/S05_viewer_ui.md) |
 | S06 | ✅ Завершён — [отчёт](development/reports/v0.1/S06_pyaterochka.md) |
 | S07 | ✅ Завершён — [отчёт](development/reports/v0.1/S07_matching_export.md) |
-| S08 | ⬜ Не начат |
+| S08 | ✅ Завершён — [отчёт](development/reports/v0.1/S08_flutter_release.md) |
+
+**Все спринты S01–S08 завершены.**
 
 Отчёты завершённых спринтов — в `docs/development/reports/v0.1/`.

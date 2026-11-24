@@ -7,43 +7,42 @@
 ## [Unreleased]
 
 ### Added
-- S07: entity resolution (lexical-v1), обогащённая очередь review с подтверждением,
-  метрики покрытия, JSONL-экспорт пар двух магазинов + manifest + скачивание, 11 тестов.
-- S06: адаптер Пятёрочки за портом `BrowserBackend`, ленивый Camoufox-бэкенд,
-  captcha-политика (останов без обхода), ручной CSV-импорт, 11 тестов; сравнение
-  двух магазинов в API/viewer.
-- S05: полный локальный viewer — каталог с фильтрами и пагинацией, карточка с историей
-  цен и SVG-графиком, сравнение магазинов, журнал импортов, приёмка совпадений,
-  настройки; 6 тестов UI.
-- S04: Alembic (первая миграция на 9 таблиц), `pricescope init-db` + stamp для legacy-БД;
-  единая пагинация, фильтры/сортировка, `GET /imports`, улучшенное сравнение цен
-  (haversine, цена за кг/литр, экономия), 10 контрактных тестов и тестов миграций.
-- S02: инъецируемые `clock`/`sleep` в retry/rate-limit/circuit breaker; 11 тестов
-  парсеров на локальных JSON-фикстурах (без сети); реестр и raw snapshots.
-- S03: адаптер Ленты доведен до рабочего состояния (hub→категории→товары→детали,
-  пагинация, `--limit`, фото, lineage); интеграционный тест полного импорта в SQLite.
-
-### Fixed
-- S03: `Observation.id` (BIGINT → INTEGER variant для SQLite) — живой импорт больше не падает.
-- S03: счётчики импорта различают `new / updated / unchanged` (вместо `rowcount`).
-- S03: ошибка одной карточки изолируется SAVEPOINT и не отравляет транзакцию;
-  `ParseRun` корректно завершается при отмене.
+- (записи добавляются в каждом коммите с кодом — RULES § 2.1)
 
 ## [0.1.0] — 2026-11-24
 
+**Тема:** Design & Foundation — рабочая платформа сравнения цен локально и в браузере.
+
 ### Added
-- Комплект проектной документации по образцу IIChatTools: README, docs-хаб,
-  RULES, ARCHITECTURE, RELEASES, DESIGN v0.1 (4 документа), KNOWN_ISSUES,
-  TODO_KI, TODO_SPRINTS, USER_GUIDE, MANUAL_TESTING_GUIDE, ADR-индекс.
-- Архитектурные решения ADR-001…ADR-007 (контракт observation, адаптеры,
-  SQLite/PostgreSQL, HTMX, time-based split, captcha-policy, Flutter API).
-- Каркас проекта: `packages/core`, `packages/parsers`, `packages/ml`,
-  `apps/api`, `apps/viewer`, `apps/mobile`, CI и скрипты разработки.
+- Документация: README, docs-хаб, RULES v1.0.4, ARCHITECTURE, RELEASES, DESIGN v0.1
+  (4 документа), ADR-001…007, KNOWN_ISSUES, TODO_KI, TODO_SPRINTS, USER_GUIDE,
+  QA-чеклист, отчёты S01–S08.
+- Ядро: `ProductObservation` v1 (цена в копейках, UTC, content_hash, raw lineage),
+  нормализация названий и мер, money-утилиты.
+- Парсеры: порт `StoreParser`, реестр, retry/rate-limit/circuit breaker с инъецируемым
+  временем, raw snapshots, адаптер Ленты (пагинация, фото, `--limit`),
+  адаптер Пятёрочки за портом `BrowserBackend` с captcha-политикой, ручной CSV-импорт.
+- Хранение: SQLAlchemy 2, Alembic (9 таблиц, stamp для legacy-БД), SQLite локально.
+- API: FastAPI, единая пагинация и error envelope, фильтры/сортировка, сравнение цен
+  с haversine и ценой за кг/литр, `/metrics`, экспорт и скачивание датасета.
+- Viewer: 8 экранов (обзор, каталог, карточка с SVG-графиком, сравнение, импорты,
+  review совпадений, настройки), HTMX-фрагменты без JS-сборки.
+- ML: lexical entity resolution (0.70/0.90), review и подтверждение пар, JSONL
+  train/val/test + manifest + checksum.
+- Клиент: Flutter (web + Android) — поиск, карточка с графиком, сравнение, избранное
+  (shared_preferences), настройки; Clean Architecture + Riverpod + GoRouter + Dio.
+- Инфраструктура: CI (ruff/mypy/pytest/Flutter), Docker Compose, PowerShell-скрипты.
+
+### Fixed
+- SQLite BIGINT PK не автоинкрементировался при живом импорте (PL-010).
+- Счётчики импорта различали insert/update через `rowcount` (PL-011).
+- Ошибка одной карточки изолируется SAVEPOINT; `ParseRun` завершается при отмене.
+- Legacy-скрипты с синтаксическими ошибками заменены адаптерами (PL-001/002).
 
 ### Known limitations
-- Парсеры и API находятся в разработке (спринты S02–S08); поддержан только
-  локальный режим. Пятёрочка — ручной запуск с остановкой на CAPTCHA.
-- Legacy-скрипты `lenta_parser*.py` и Excel-файлы сохранены в корне (PL-001).
+- Эмбеддинги CLIP/SentenceTransformers не подключены (только lexical-скоринг).
+- Живой запуск Пятёрочки требует Camoufox и доступности сайта; CAPTCHA → останов.
+- Flutter release-подпись Android и мультипользовательский серверный режим — v0.2+.
 
 [Unreleased]: https://github.com/example/pricescope/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/example/pricescope/releases/tag/v0.1.0

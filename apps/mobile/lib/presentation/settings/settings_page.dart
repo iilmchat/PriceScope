@@ -10,22 +10,26 @@ class SettingsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Настройки')),
-      body: Padding(
+      body: ListView(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Адрес API', style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            SelectableText(AppConfig.apiBaseUrl),
-            const SizedBox(height: 16),
-            const Text(
-              'Адрес задаётся при сборке через --dart-define=API_BASE_URL=… '
-              'Для телефона в той же сети укажите IP компьютера с запущенным '
-              'pricescope serve --local --host 0.0.0.0.',
-            ),
-          ],
-        ),
+        children: [
+          const Text('Адрес API', style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          SelectableText(AppConfig.apiBaseUrl),
+          const SizedBox(height: 8),
+          Text('Версия: ${AppConfig.version}'),
+          const SizedBox(height: 16),
+          const Text(
+            'Адрес задаётся при сборке через --dart-define=API_BASE_URL=… '
+            'Для телефона в той же сети укажите IP компьютера с запущенным '
+            'pricescope serve --local --host 0.0.0.0.',
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Парсеры соблюдают условия магазинов. При CAPTCHA сбор останавливается '
+            'без попыток обхода.',
+          ),
+        ],
       ),
     );
   }

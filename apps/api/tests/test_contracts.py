@@ -113,6 +113,11 @@ async def test_observation_filters(client, seeded):
     )
     assert response.json()["data"]["total"] == 2
 
+    by_external = await client.get(
+        "/api/v1/observations", params={"external_id": "1"}
+    )
+    assert by_external.json()["data"]["total"] == 1
+
 
 async def test_compare_contract(client, seeded):
     """Сравнение: дешёвый вариант помечен, цена за литр и экономия рассчитаны."""

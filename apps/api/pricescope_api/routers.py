@@ -117,6 +117,7 @@ async def get_product(product_id: int, session: AsyncSession = Depends(get_sessi
 @api.get("/observations")
 async def list_observations(
     product_id: int | None = None,
+    external_id: str | None = None,
     store_code: str | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
@@ -127,6 +128,8 @@ async def list_observations(
     conditions: list[Any] = []
     if product_id is not None:
         conditions.append(repo.Observation.product_id == product_id)
+    if external_id:
+        conditions.append(repo.Observation.external_id == external_id)
     if store_code:
         conditions.append(repo.Observation.store_code == store_code)
     if date_from:

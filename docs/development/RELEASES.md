@@ -34,8 +34,12 @@
   и оценка precision/recall перед обучением моделей.
 - ML-модели (CLIP/SentenceTransformers) опциональны; без них работает
   лексический matching с меньшим quality.
-- `apps/mobile` — debug-сборки; release-подпись Android — v0.2+.
-- Legacy-Excel-скрипты остаются в корне (PL-001) и не являются частью API.
+- `apps/mobile` — web/debug-сборки; release-подпись Android для Google Play — v0.2+.
+  Flutter SDK на машине разработки отсутствует, поэтому Dart-код проверяется CI-job
+  (`flutter analyze` / `flutter test` / `flutter build web`); локально не компилировался.
+- Эмбеддинги (CLIP/SentenceTransformers) не подключены: matching только lexical (`lexical-v1`).
+- Legacy-Excel-скрипты оставлены в корне как история (PL-001 закрыт адаптером) и не
+  являются частью API.
 
 ---
 

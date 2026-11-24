@@ -162,10 +162,8 @@ pricescope serve --local
 - [x] Alembic-миграции и укреплённое API: пагинация, фильтры, сравнение (S04)
 - [x] Полный локальный viewer: история цен, сравнение, приёмка совпадений (S05)
 - [x] Адаптер Пятёрочки + captcha-политика + ручной CSV-импорт (S06)
-- [x] Сопоставление товаров, review, метрики и JSONL-экспорт, 56 тестов (S07)
-- [ ] Адаптер Пятёрочки + captcha-policy (S06)
-- [ ] Entity resolution + ML-экспорт (S07)
-- [ ] Flutter web/Android (S08)
+- [x] Сопоставление товаров, review, метрики и JSONL-экспорт (S07)
+- [x] Flutter-клиент (web + Android) и релиз v0.1.0, 56 тестов (S08)
 
 Актуальные ограничения — [RELEASES.md § 1a](docs/development/RELEASES.md#1a-известные-ограничения-релиза-v010)
 и [KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md).
