@@ -18,14 +18,14 @@ class SettingsPage extends StatelessWidget {
           SelectableText(AppConfig.apiBaseUrl),
           SizedBox(height: 8),
           Text('Версия: ${AppConfig.version}'),
-          const SizedBox(height: 16),
-          const Text(
+          SizedBox(height: 16),
+          Text(
             'Адрес задаётся при сборке через --dart-define=API_BASE_URL=… '
             'Для телефона в той же сети укажите IP компьютера с запущенным '
             'pricescope serve --local --host 0.0.0.0.',
           ),
-          const SizedBox(height: 16),
-          const Text(
+          SizedBox(height: 16),
+          Text(
             'Парсеры соблюдают условия магазинов. При CAPTCHA сбор останавливается '
             'без попыток обхода.',
           ),

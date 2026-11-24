@@ -1,4 +1,5 @@
 import '../core/api_client.dart';
+import '../core/failures.dart';
 import '../domain/entities.dart';
 import '../domain/repositories.dart';
 import 'api_dto.dart';
