@@ -44,7 +44,7 @@ pricescope parse --store pyaterochka
 # Без браузера — легальная альтернатива:
 pricescope parse --store manual --file data/products.csv
 pricescope parse --store lenta --limit 3
-# Открыть http://127.0.0.1:8765/compare?query=Рексона
+# Открыть http://127.0.0.1:8775/compare?query=Рексона
 ```
 
 ## (5) Что не так

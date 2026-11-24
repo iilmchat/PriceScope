@@ -47,4 +47,4 @@ jobs:
         run: flutter test
       - name: Build web
         working-directory: apps/mobile
-        run: flutter build web --dart-define=API_BASE_URL=http://127.0.0.1:8765
+        run: flutter build web --dart-define=API_BASE_URL=http://127.0.0.1:8775

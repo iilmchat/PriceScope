@@ -58,7 +58,7 @@ Flutter-клиентом (веб + Android) и экспортом данных �
 └────────────────────────────▲────────────────────────────────────────┘
                              │
 ┌────────────────────────────┴────────────────────────────────────────┐
-│  apps/api — FastAPI (net: local 127.0.0.1:8765 / server HTTPS)      │
+│  apps/api — FastAPI (net: local 127.0.0.1:8775 / server HTTPS)      │
 │  ├── routers/: health, stores, products, observations, compare,     │
 │  │             imports, matches, exports, favorites, alerts         │
 │  ├── services/: ingest, search, compare, matching, export, jobs     │

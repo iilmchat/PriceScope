@@ -86,10 +86,10 @@ pricescope parse --store lenta --lat 55.3925 --lon 36.7323
 
 # 3. Поднять API + локальный просмотровщик
 pricescope serve --local
-# открыть http://127.0.0.1:8765
+# открыть http://127.0.0.1:8775
 ```
 
-Проверка: `GET http://127.0.0.1:8765/health` →
+Проверка: `GET http://127.0.0.1:8775/health` →
 `{"status":"ok","mode":"local","version":"0.1.0",...}`.
 
 > Если БД создана до S03 (схема с BIGINT PK), удалите `data/pricescope.db` и
@@ -108,7 +108,7 @@ pricescope serve --local
 | `pricescope init-db` | применить Alembic-миграции, создать БД SQLite |
 | `pricescope parse --store lenta --lat … --lon … [--limit N]` | запустить парсер, записать observations (`--limit` — для smoke) |
 | `pricescope parse --store pyaterochka` | ручной запуск браузерного парсера (CAPTCHA → останов) |
-| `pricescope serve --local [--host 127.0.0.1] [--port 8765]` | API + viewer |
+| `pricescope serve --local [--host 127.0.0.1] [--port 8775]` | API + viewer |
 | `pricescope export --name product-matching --version 1` | выгрузить датасет JSONL + manifest |
 | `pricescope match --review` | показать очередь спорных сопоставлений |
 

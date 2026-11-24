@@ -76,7 +76,7 @@ pytest -q -p pytest_asyncio.plugin
 pricescope init-db
 pricescope parse --store lenta --lat 55.3925 --lon 36.7323
 pricescope serve --local
-# http://127.0.0.1:8765/health → {"status":"ok",...}
+# http://127.0.0.1:8775/health → {"status":"ok",...}
 ```
 
 Flutter (проверка отдельно):
@@ -86,7 +86,7 @@ cd apps/mobile
 flutter pub get
 flutter analyze
 flutter test
-flutter build web --dart-define=API_BASE_URL=http://127.0.0.1:8765
+flutter build web --dart-define=API_BASE_URL=http://127.0.0.1:8775
 ```
 
 ---

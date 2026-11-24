@@ -84,7 +84,7 @@ Copy-Item .env.example .env
 | `PRICESCOPE_MODE` | `local` | `local` (SQLite, без авторизации) / `server` (v0.2+) |
 | `PRICESCOPE_DB_PATH` | `data/pricescope.db` | файл SQLite |
 | `PRICESCOPE_HOST` | `127.0.0.1` | адрес API; `0.0.0.0` — только в доверенной сети |
-| `PRICESCOPE_PORT` | `8765` | порт API и просмотровщика |
+| `PRICESCOPE_PORT` | `8775` | порт API и просмотровщика |
 | `PRICESCOPE_DEFAULT_LAT` / `..._LON` | `55.3925` / `36.7323` | точка для поиска ближайшего магазина |
 | `PRICESCOPE_LENTA_BRAND` / `..._CHANNEL` | `lo` / `lo` | витрина и канал Ленты |
 | `PRICESCOPE_LENTA_PAGE_LIMIT` | `50` | размер страницы каталога |
@@ -174,9 +174,9 @@ python -c "import sqlite3; c=sqlite3.connect('data/pricescope.db'); print(c.exec
 
 ```powershell
 pricescope serve --local
-# http://127.0.0.1:8765          — просмотровщик
-# http://127.0.0.1:8765/health   — проверка состояния
-# http://127.0.0.1:8765/docs     — OpenAPI / Swagger
+# http://127.0.0.1:8775          — просмотровщик
+# http://127.0.0.1:8775/health   — проверка состояния
+# http://127.0.0.1:8775/docs     — OpenAPI / Swagger
 ```
 
 Доступные экраны просмотровщика:
@@ -194,8 +194,8 @@ pricescope serve --local
 **Доступ с телефона в той же сети** (только доверенная сеть!):
 
 ```powershell
-pricescope serve --local --host 0.0.0.0 --port 8765
-# в Flutter: --dart-define=API_BASE_URL=http://192.168.1.10:8765
+pricescope serve --local --host 0.0.0.0 --port 8775
+# в Flutter: --dart-define=API_BASE_URL=http://192.168.1.10:8775
 ```
 
 ---
@@ -240,7 +240,7 @@ train.jsonl  val.jsonl  test.jsonl  manifest.json  checksums.sha256
 docker compose up --build
 ```
 
-API и viewer будут доступны на `http://localhost:8765`. Данные монтируются
+API и viewer будут доступны на `http://localhost:8775`. Данные монтируются
 в `./data` и `./datasets` — они сохраняются между перезапусками контейнера.
 
 ---
@@ -254,12 +254,12 @@ flutter analyze
 flutter test
 
 # Веб
-flutter run -d chrome --dart-define=API_BASE_URL=http://127.0.0.1:8765
-flutter build web --dart-define=API_BASE_URL=http://127.0.0.1:8765
+flutter run -d chrome --dart-define=API_BASE_URL=http://127.0.0.1:8775
+flutter build web --dart-define=API_BASE_URL=http://127.0.0.1:8775
 
 # Android (устройство/эмулятор в той же сети)
-flutter run --dart-define=API_BASE_URL=http://192.168.1.10:8765
-flutter build apk --debug --dart-define=API_BASE_URL=http://192.168.1.10:8765
+flutter run --dart-define=API_BASE_URL=http://192.168.1.10:8775
+flutter build apk --debug --dart-define=API_BASE_URL=http://192.168.1.10:8775
 ```
 
 > Flutter SDK на машине разработки v0.1 не установлен — Dart-код проверяется CI-job
@@ -296,10 +296,11 @@ pwsh -File scripts/ci/check-doc-links.ps1  # Ссылки документаци
 | Симптом | Причина | Решение |
 | :--- | :--- | :--- |
 | `pytest` падает с `ImportError: cannot import name 'override' from 'typing'` | `human_requests` регистрирует сломанный pytest11-плагин на Python 3.11 (PL-009) | `$env:PYTEST_DISABLE_PLUGIN_AUTOLOAD='1'; pytest -p pytest_asyncio.plugin` — уже в CI и скриптах |
+| `no such table: parse_runs` при `parse` из `apps/api` | путь к БД резолвился относительно CWD (PL-013) | после обновления пути привязаны к корню; удалить пустой `apps/api/data/pricescope.db`, повторить команду |
 | `NOT NULL constraint failed: observations.id` при импорте | устаревшая SQLite-схема (PL-010) | удалить `data/pricescope.db`, `pricescope init-db` |
 | `Для парсера Пятёрочки задайте CAMOUFOX_EXECUTABLE_PATH` | не задан путь к браузеру | указать путь в `.env`, установить `.[parser5ka]` |
 | `CAPTCHA_DETECTED` в журнале импортов | антибот-проверка сайта | не обходить; дождаться доступа или использовать `--store manual` |
-| `Адрес уже используется` | занят порт 8765 | `pricescope serve --local --port 8766` |
+| `Адрес уже используется` | занят порт 8775 | `pricescope serve --local --port 8766` |
 | Русский текст в консоли «крокозябрами» | кодировка консоли cp866 | `chcp 65001` в PowerShell перед запуском |
 | `/compare` пуст | нет данных второго магазина или параметры не совпадают | импортировать Пятёрочку/CSV, проверить `query`, запустить `match --run` |
 | Экспорт с 0 строками | нет подтверждённых пар разных магазинов | подтвердить пары на `/matches`, повторить экспорт |

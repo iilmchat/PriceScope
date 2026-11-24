@@ -12,7 +12,7 @@ pricescope init-db
 $job = Start-Job -ScriptBlock { pricescope serve --local }
 Start-Sleep -Seconds 3
 try {
-    $health = Invoke-RestMethod http://127.0.0.1:8765/health
+    $health = Invoke-RestMethod http://127.0.0.1:8775/health
     if ($health.status -ne 'ok') { throw "health: $($health | ConvertTo-Json)" }
     Write-Host "Smoke OK: $($health.version) / $($health.mode)"
 } finally {

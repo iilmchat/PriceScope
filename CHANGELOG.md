@@ -7,6 +7,12 @@
 ## [Unreleased]
 
 ### Fixed
+- Единый порт по умолчанию **8775**: `Settings.port`, Docker Compose, Flutter
+  `API_BASE_URL`, CI, скрипты и документация. Страница настроек viewer показывает
+  реальный адрес из запроса, а не хардкод (PL-014).
+- Пути данных (`db_path`, `raw_dir`, `photos_dir`, `datasets_dir`) теперь резолвятся
+  относительно корня проекта, а не CWD: `init-db` и `parse` используют одну БД
+  при запуске из любой папки (PL-013); добавлены 4 регрессионных теста.
 - extras `parser5ka`: исправлены версии (`camoufox>=0.5.3`, `human-requests>=0.2.2`,
   добавлены `pyaterochka-api`, `typing-extensions` для Python 3.11 и `selectolax<1`)
   — установка `pip install -e ".[parser5ka]"` теперь работает.

@@ -112,7 +112,7 @@
 | | **Local** (разработчик, v0.1) | **Server** (позже) |
 | :--- | :--- | :--- |
 | БД | SQLite `data/pricescope.db` | PostgreSQL 16 (+ pgvector опционально) |
-| Доступ | `127.0.0.1:8765`, без авторизации | HTTPS + JWT + roles |
+| Доступ | `127.0.0.1:8775`, без авторизации | HTTPS + JWT + roles |
 | Парсинг | CLI `pricescope parse` вручную | фоновый job (Celery/ARQ), расписание |
 | Хранилище фото | `data/photos/` | S3-совместимое хранилище |
 | Клиенты | viewer + Flutter (desktop IP) | Flutter web + Android, viewer — опционально |

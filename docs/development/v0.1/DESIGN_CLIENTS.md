@@ -8,7 +8,7 @@
 ## § 1. Общая идея
 
 Оба клиента используют **один и тот же REST API**. Разница только в точке
-подключения: локальный viewer — `http://127.0.0.1:8765`, Flutter — local IP
+подключения: локальный viewer — `http://127.0.0.1:8775`, Flutter — local IP
 или серверный URL. Никакой бизнес-логики в клиентах (только представление и кэш).
 
 ---
@@ -43,7 +43,7 @@ pip install -e ".[dev]"
 pricescope init-db
 pricescope parse --store lenta --lat 55.3925 --lon 36.7323
 pricescope serve --local
-# http://127.0.0.1:8765
+# http://127.0.0.1:8775
 ```
 
 ---
@@ -101,8 +101,8 @@ lib/
 flutter pub get
 flutter analyze
 flutter test
-flutter build web --dart-define=API_BASE_URL=http://127.0.0.1:8765
-flutter build apk --debug --dart-define=API_BASE_URL=http://192.168.1.10:8765
+flutter build web --dart-define=API_BASE_URL=http://127.0.0.1:8775
+flutter build apk --debug --dart-define=API_BASE_URL=http://192.168.1.10:8775
 # flutter build appbundle --release --dart-define=API_BASE_URL=https://api.example.com
 ```
 

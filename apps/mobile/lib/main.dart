@@ -5,6 +5,6 @@ import 'app.dart';
 
 void main() {
   // Адрес API задаётся при сборке:
-  // flutter run -d chrome --dart-define=API_BASE_URL=http://127.0.0.1:8765
+  // flutter run -d chrome --dart-define=API_BASE_URL=http://127.0.0.1:8775
   runApp(const ProviderScope(child: PriceScopeApp()));
 }

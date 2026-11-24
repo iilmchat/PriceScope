@@ -9,10 +9,10 @@ flutter pub get
 flutter analyze
 flutter test
 
-flutter run -d chrome --dart-define=API_BASE_URL=http://127.0.0.1:8765
-flutter run --dart-define=API_BASE_URL=http://192.168.1.10:8765
-flutter build web --dart-define=API_BASE_URL=http://127.0.0.1:8765
-flutter build apk --debug --dart-define=API_BASE_URL=http://192.168.1.10:8765
+flutter run -d chrome --dart-define=API_BASE_URL=http://127.0.0.1:8775
+flutter run --dart-define=API_BASE_URL=http://192.168.1.10:8775
+flutter build web --dart-define=API_BASE_URL=http://127.0.0.1:8775
+flutter build apk --debug --dart-define=API_BASE_URL=http://192.168.1.10:8775
 ```
 
 ## Экраны

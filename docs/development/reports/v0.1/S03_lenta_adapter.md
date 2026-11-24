@@ -41,7 +41,7 @@ Remove-Item -Force data\pricescope.db   # если БД создана до ис
 pricescope init-db
 pricescope parse --store lenta --limit 3
 pricescope parse --store lenta --limit 3   # new=0
-pricescope serve --local                   # http://127.0.0.1:8765
+pricescope serve --local                   # http://127.0.0.1:8775
 ```
 
 ## (5) Что не так

@@ -39,7 +39,7 @@ pricescope match --run
 pricescope match --review
 pricescope export --name product-matching --version 1
 pricescope serve --local
-# http://127.0.0.1:8765/matches
+# http://127.0.0.1:8775/matches
 # GET /api/v1/metrics
 # GET /api/v1/exports/1/download?file=train.jsonl
 ```

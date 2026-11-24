@@ -114,18 +114,36 @@
   `pyaterochka-api>=0.2.2,<1`, `selectolax>=0.3.21,<1`), добавлен shim
   `typing_extensions.override`, `license` переведён на SPDX-строку.
 
+### PL-013 Разные SQLite-файлы при запуске из разных папок
+- **Приоритет:** 🔴 Critical | **Статус:** Fixed | **Исправлено в:** v0.1.0 (post-release)
+- **Файлы:** `apps/api/pricescope_api/config.py`, `apps/api/tests/test_config_paths.py`
+- **Описание:** `pricescope init-db` из корня создавал `data/pricescope.db` с таблицами,
+  а `pricescope parse` из `apps/api` подключался к `apps/api/data/pricescope.db`
+  (пустой файл создавался aiosqlite при подключении) → `no such table: parse_runs`.
+- **Решение:** `PROJECT_ROOT` из расположения пакета; валидатор резолвит относительные
+  пути к корню; SQLite URL использует `\` → `/`; 4 регрессионных теста на CWD/absolute.
+
+### PL-014 Порт 8765 был зашит в конфигах и доках
+- **Приоритет:** 🟡 Medium | **Статус:** Fixed | **Исправлено в:** v0.1.0 (post-release)
+- **Файлы:** `config.py`, `docker-compose.yml`, `.env.example`, Flutter `config.dart`,
+  CI, скрипты и документация
+- **Описание:** смена `PRICESCOPE_PORT=8775` не давала эффекта в Docker, Flutter
+  и примерах — везде оставался 8765; страница `/settings` viewer показывала хардкод.
+- **Решение:** дефолт 8775 во всех местах; `Settings.port` — единственный источник
+  для CLI; viewer берёт адрес из `request.base_url`; добавлены тесты дефолта и env-override.
+
 ---
 
 ## Сводка
 
 | Статус | Количество |
 | :--- | ---: |
-| Fixed | 8 (PL-001…PL-004, PL-006, PL-007, PL-011, PL-012) |
+| Fixed | 10 (PL-001…PL-004, PL-006, PL-007, PL-011…PL-014) |
 | In Progress | 0 |
 | Documented | 3 (PL-005, PL-009, PL-010) |
 | Planned | 0 |
 | Deferred | 1 (PL-008) |
-| **Всего** | **12** |
+| **Всего** | **14** |
 
 > Единственный источник истины — этот файл. Сводка обновляется при каждом
 > изменении статуса (RULES § 2.4).

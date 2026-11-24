@@ -29,7 +29,7 @@
 |:---:|---|---|:---:|---|
 | 1 | `pip install -e ".[dev]"` в чистом venv | без ошибок, `pricescope --help` работает | | |
 | 2 | `pricescope init-db` | файл `data/pricescope.db`, таблицы созданы, миграции применены | | |
-| 3 | `pricescope serve --local` | `http://127.0.0.1:8765` открывается; `/health` → `status=ok`, `mode=local` | | |
+| 3 | `pricescope serve --local` | `http://127.0.0.1:8775` открывается; `/health` → `status=ok`, `mode=local` | | |
 | 4 | Viewer → «Обзор» | счётчики 0, статус БД OK | | |
 | 5 | `pricescope parse --store lenta --limit 3` (быстрая проверка) | `ParseRun.status=success/partial`, `new>0`, лог с `trace_id` | | |
 | 6 | Повторить команду 5 | `new=0`, `updated>=0`, дубликатов в таблице нет | | |
@@ -47,7 +47,7 @@
 | 17 | Открыть `manifest.json` | schema_version, split_policy=time-based, rows, checksums, versions | | |
 | 18 | `pytest -q` / `ruff check .` / `mypy` | зелёные, 0 ошибок | | |
 | 19 | `cd apps/mobile && flutter analyze && flutter test` | зелёные | | |
-| 20 | `flutter run -d chrome --dart-define=API_BASE_URL=http://127.0.0.1:8765` | клиент подключается, поиск и сравнение работают | | |
+| 20 | `flutter run -d chrome --dart-define=API_BASE_URL=http://127.0.0.1:8775` | клиент подключается, поиск и сравнение работают | | |
 
 > Если 20/20 OK — релиз можно публиковать.
 > Сценарии 13–14 при отсутствии доступа к 5ka.ru — `SKIP` (не FAIL), но
