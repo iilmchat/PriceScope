@@ -111,6 +111,14 @@ class CamoufoxBackend:
                 "и установите extras: pip install -e '.[parser5ka]'"
             )
         try:
+            # human_requests 0.2.x ожидает typing.override (появился в Python 3.12)
+            import typing
+
+            if not hasattr(typing, "override"):
+                from typing_extensions import override as _override
+
+                typing.override = _override  # type: ignore[attr-defined]
+
             import pyaterochka_api.manager as mgr
             from camoufox.async_api import AsyncCamoufox
             from human_requests import HumanBrowser, HumanContext, HumanPage

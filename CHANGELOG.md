@@ -6,6 +6,12 @@
 
 ## [Unreleased]
 
+### Fixed
+- extras `parser5ka`: исправлены версии (`camoufox>=0.5.3`, `human-requests>=0.2.2`,
+  добавлены `pyaterochka-api`, `typing-extensions` для Python 3.11 и `selectolax<1`)
+  — установка `pip install -e ".[parser5ka]"` теперь работает.
+- `project.license` переведён на SPDX-строку (убрано предупреждение setuptools).
+
 ### Added
 - (записи добавляются в каждом коммите с кодом — RULES § 2.1)
 

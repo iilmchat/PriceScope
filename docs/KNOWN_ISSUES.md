@@ -103,18 +103,29 @@
   `new | updated | unchanged`. Добавлен SAVEPOINT на строку, чтобы ошибка одной
   карточки не отравляла транзакцию.
 
+### PL-012 — Некорректные версии в extras `parser5ka`
+- **Приоритет:** 🟠 High | **Статус:** Fixed | **Исправлено в:** v0.1.0 (post-release)
+- **Файлы:** `pyproject.toml`, `pyaterochka/browser.py`
+- **Описание:** `pip install -e ".[parser5ka]"` падал: `camoufox>=0.15` и
+  `human-requests>=0.4` отсутствуют в индексе; не был объявлен `pyaterochka-api`;
+  `selectolax 1.0` удалил `selectolax.parser`, который импортирует `human_requests`;
+  на Python 3.11 не хватает `typing.override`.
+- **Решение:** версии зафиксированы (`camoufox>=0.5.3,<1`, `human-requests>=0.2.2,<1`,
+  `pyaterochka-api>=0.2.2,<1`, `selectolax>=0.3.21,<1`), добавлен shim
+  `typing_extensions.override`, `license` переведён на SPDX-строку.
+
 ---
 
 ## Сводка
 
 | Статус | Количество |
 | :--- | ---: |
-| Fixed | 7 (PL-001…PL-004, PL-006, PL-007, PL-011) |
+| Fixed | 8 (PL-001…PL-004, PL-006, PL-007, PL-011, PL-012) |
 | In Progress | 0 |
 | Documented | 3 (PL-005, PL-009, PL-010) |
 | Planned | 0 |
 | Deferred | 1 (PL-008) |
-| **Всего** | **11** |
+| **Всего** | **12** |
 
 > Единственный источник истины — этот файл. Сводка обновляется при каждом
 > изменении статуса (RULES § 2.4).
