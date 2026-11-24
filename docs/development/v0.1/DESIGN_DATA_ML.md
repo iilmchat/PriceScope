@@ -49,6 +49,10 @@ DO UPDATE SET price_minor=..., raw_ref=..., content_hash=...
 
 ## § 4. Entity resolution: конвейер
 
+> **Статус S07:** реализован `run_matching` на lexical-скоринге
+> (`MODEL_VERSION=lexical-v1`), пороги 0.90 / 0.70, очередь review и привязка
+> observation к `Product`. Эмбеддинги (CLIP/SentenceTransformers) — следующий этап.
+
 ```
 Observation
   → normalize_name (NFKC, lower, пунктуация, бренд)
@@ -76,6 +80,10 @@ precision/recall/F1; при падении > 5 п.п. — пересмотр п�
 ---
 
 ## § 5. Экспорт датасета
+
+> **Статус S07:** `pricescope export` / `POST /api/v1/exports` формируют пары
+> «разные магазины — один товар», time-based split, `manifest.json` с checksum
+> и `GET /api/v1/exports/{id}/download` (только файлы из манифеста).
 
 **Запуск:** `pricescope export --name product-matching --version 1`.
 

@@ -9,11 +9,11 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from pricescope_api import repositories as repo
 from pricescope_api.db.models import Observation, ParseRun, ProductMatch
 from pricescope_api.db.session import get_session
+from pricescope_api.errors import ApiError
 from pricescope_api.pagination import Pagination
-from pricescope_api.services import compare_prices
+from pricescope_api.services import compare_prices, decide_match, get_review_rows
 from pricescope_core import MatchStatus, format_rub
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -246,18 +246,8 @@ async def matches_page(
     request: Request, session: AsyncSession = Depends(get_session)
 ) -> HTMLResponse:
     """Очередь спорных сопоставлений товаров."""
-    rows = (
-        (
-            await session.execute(
-                select(ProductMatch)
-                .where(ProductMatch.status == MatchStatus.REVIEW)
-                .order_by(ProductMatch.score.desc())
-                .limit(50)
-            )
-        )
-        .scalars()
-        .all()
-    )
+    result = await get_review_rows(session, Pagination(page=1, page_size=50))
+    rows = result["items"]
     return _render(
         request,
         "matches.html",
@@ -273,12 +263,27 @@ async def match_decide(
     session: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
     """Подтвердить/отклонить совпадение и вернуть обновлённую строку."""
-    match = await repo.update_match_decision(session, match_id, confirm, "viewer")
+    try:
+        decision = await decide_match(session, match_id, confirm, "viewer")
+    except ApiError:
+        return _render(request, "fragments/match_row.html", {"row": None})
+    match = await session.get(ProductMatch, match_id)
     if match is None:
         return _render(request, "fragments/match_row.html", {"row": None})
-    await repo.audit(session, "match.decide", "", match_id=match_id, confirm=confirm)
-    await session.commit()
-    return _render(request, "fragments/match_row.html", {"row": match})
+    return _render(
+        request,
+        "fragments/match_row.html",
+        {
+            "row": {
+                "id": match.id,
+                "observation_id": match.observation_id,
+                "product_id": match.product_id,
+                "method": match.method,
+                "score": match.score,
+                "status": decision["status"],
+            }
+        },
+    )
 
 
 @router.get("/settings", response_class=HTMLResponse)

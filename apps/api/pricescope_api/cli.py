@@ -40,9 +40,9 @@ def build_parser() -> argparse.ArgumentParser:
     export.add_argument("--name", default="product-matching")
     export.add_argument("--version", dest="dataset_version", default="1")
 
-    sub.add_parser("match", help="показать очередь совпадений").add_argument(
-        "--review", action="store_true"
-    )
+    match_parser = sub.add_parser("match", help="сопоставление товаров")
+    match_parser.add_argument("--review", action="store_true", help="очередь спорных пар")
+    match_parser.add_argument("--run", action="store_true", help="запустить entity resolution")
     return parser
 
 
@@ -97,8 +97,21 @@ async def _async_command(args: argparse.Namespace) -> int:
             from sqlalchemy import select
 
             from pricescope_api.db.models import ProductMatch
+            from pricescope_api.services import run_matching
 
-            rows = (await session.execute(select(ProductMatch))).scalars().all()
+            if args.run:
+                result = await run_matching(session)
+                counts = result["counts"]
+                print(
+                    f"Сопоставление: auto={counts['auto']} review={counts['review']} "
+                    f"new={counts['new']} ({result['model_version']})"
+                )
+                return 0
+
+            stmt = select(ProductMatch)
+            if args.review:
+                stmt = stmt.where(ProductMatch.status == "review")
+            rows = (await session.execute(stmt)).scalars().all()
             for match in rows:
                 print(f"#{match.id} score={match.score:.2f} {match.status}")
             return 0

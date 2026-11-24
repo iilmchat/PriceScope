@@ -55,14 +55,18 @@
 - **Решение:** money = `int` минорных единиц во всей системе (RULES § 4.1, ADR-001).
 
 ### PL-006 — Нет сопоставления одного товара в разных магазинах
-- **Приоритет:** 🟠 High | **Статус:** Planned | **Запланировано:** S07
+- **Приоритет:** 🟠 High | **Статус:** Fixed | **Исправлено в:** v0.1.0 (S07)
 - **Описание:** без entity resolution сравнение цен невозможно; названия и фасовки
   в Ленте и Пятёрочке различаются.
-- **Решение:** MatchingService + review queue + ProductMatch (DESIGN_DATA_ML § 4).
+- **Решение:** `run_matching` (lexical-v1, пороги 0.70/0.90), review queue,
+  `ProductMatch` с method/score/model_version; подтверждение связывает observation
+  с каноническим товаром.
 
 ### PL-007 — Нет экспорта данных для обучения моделей
-- **Приоритет:** 🟡 Medium | **Статус:** Planned | **Запланировано:** S07
-- **Решение:** JSONL + manifest + time-based split + checksum (DESIGN_DATA_ML § 5).
+- **Приоритет:** 🟡 Medium | **Статус:** Fixed | **Исправлено в:** v0.1.0 (S07)
+- **Решение:** `pricescope export` и `POST /api/v1/exports`: пары «два магазина — один
+  товар», JSONL train/val/test + manifest (split boundaries, версии, checksum) +
+  скачивание через `/exports/{id}/download`.
 
 ### PL-009 — `human_requests` ломает автозагрузку pytest-плагинов на Python 3.11
 - **Приоритет:** 🟡 Medium | **Статус:** Documented | **Запланировано:** S02
@@ -105,10 +109,10 @@
 
 | Статус | Количество |
 | :--- | ---: |
-| Fixed | 5 (PL-001, PL-002, PL-003, PL-004, PL-011) |
+| Fixed | 7 (PL-001…PL-004, PL-006, PL-007, PL-011) |
 | In Progress | 0 |
 | Documented | 3 (PL-005, PL-009, PL-010) |
-| Planned | 2 (PL-006, PL-007) |
+| Planned | 0 |
 | Deferred | 1 (PL-008) |
 | **Всего** | **11** |
 

@@ -10,10 +10,17 @@ from typing import Any
 
 import httpx
 from pricescope_core import ParseStatus, extract_measure
+from pricescope_ml.matching import (
+    MODEL_VERSION,
+    MatchCandidate,
+    MatchResult,
+    decide,
+    score_candidates,
+)
 from pricescope_parsers.base import ParseContext
 from pricescope_parsers.registry import get_parser
 from pricescope_parsers.snapshots import RawSnapshotStore
-from sqlalchemy import select
+from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pricescope_api import repositories as repo
@@ -256,21 +263,256 @@ def _unit_prices(observation: Any) -> tuple[int | None, int | None]:
     return None, None
 
 
+def _candidate(item: Any) -> MatchCandidate:
+    """Observation → кандидат сопоставления."""
+    return MatchCandidate(
+        name=item.name,
+        store_code=item.store_code,
+        external_id=item.external_id,
+        package=item.package,
+        price_minor=item.price_minor,
+        image_url=(item.image_urls_json or [None])[0],
+        observed_at=item.observed_at.isoformat(),
+        product_id=item.product_id,
+    )
+
+
+async def run_matching(session: AsyncSession, limit: int = 2000) -> dict:
+    """Сопоставить observation с каноническими товарами (DESIGN_DATA_ML § 4)."""
+    products = (await session.execute(select(repo.Product))).scalars().all()
+    candidates = [
+        MatchCandidate(
+            name=product.canonical_name,
+            package=(product.attributes_json or {}).get("package"),
+            product_id=product.id,
+        )
+        for product in products
+    ]
+    known_products = {candidate.product_id for candidate in candidates}
+    linked = (
+        await session.execute(
+            select(repo.Observation)
+            .where(repo.Observation.product_id.is_not(None))
+            .limit(2000)
+        )
+    ).scalars().all()
+    for item in linked:
+        if item.product_id not in known_products:
+            candidates.append(_candidate(item))
+            known_products.add(item.product_id)
+
+    unlinked = (
+        await session.execute(
+            select(repo.Observation)
+            .where(repo.Observation.product_id.is_(None))
+            .order_by(repo.Observation.observed_at.desc())
+            .limit(limit)
+        )
+    ).scalars().all()
+    already_matched = set(
+        (await session.execute(select(repo.ProductMatch.observation_id))).scalars().all()
+    )
+    counts = {"auto": 0, "review": 0, "new": 0}
+
+    for item in unlinked:
+        if item.id in already_matched:
+            continue
+        current = _candidate(item)
+        best_score, best = -1.0, None
+        for candidate in candidates:
+            result = score_candidates(current, candidate)
+            if result.score > best_score:
+                best_score, best = result.score, candidate
+
+        decision = decide(MatchResult(score=best_score, method="lexical", same_measure=False))
+        status = decision.status
+        is_new = False
+        if best is not None and status in ("auto", "review") and best.product_id:
+            product_id, method, score = best.product_id, decision.method, best_score
+        else:
+            product = await repo.upsert_product(
+                session,
+                item.name,
+                category_path=item.category_path,
+                attributes_json={"package": item.package},
+                image_urls_json=item.image_urls_json,
+            )
+            product_id, method, score, status = product.id, "new_product", 1.0, "auto"
+            is_new = True
+            candidate = _candidate(item)
+            candidates.append(
+                MatchCandidate(
+                    name=candidate.name,
+                    store_code=candidate.store_code,
+                    external_id=candidate.external_id,
+                    package=candidate.package,
+                    price_minor=candidate.price_minor,
+                    image_url=candidate.image_url,
+                    observed_at=candidate.observed_at,
+                    product_id=product.id,
+                )
+            )
+            known_products.add(product.id)
+
+        await repo.create_product_match(
+            session,
+            item.id,
+            product_id,
+            method=method,
+            score=score,
+            status=status,
+            model_version=MODEL_VERSION,
+        )
+        if status == "auto":
+            item.product_id = product_id
+        counts["new" if is_new else status] += 1
+
+    await session.commit()
+    await repo.audit(session, "matching.run", current_trace_id(), counts=counts)
+    await session.commit()
+    return {"counts": counts, "model_version": MODEL_VERSION, "processed": sum(counts.values())}
+
+
+async def get_review_rows(session: AsyncSession, pagination: Any) -> dict:
+    """Очередь спорных сопоставлений с названиями и ценами."""
+    condition = repo.ProductMatch.status == "review"
+    total = await session.scalar(
+        select(func.count()).select_from(repo.ProductMatch).where(condition)
+    )
+    result = await session.execute(
+        select(repo.ProductMatch, repo.Observation, repo.Product)
+        .join(repo.Observation, repo.ProductMatch.observation_id == repo.Observation.id)
+        .outerjoin(repo.Product, repo.ProductMatch.product_id == repo.Product.id)
+        .where(condition)
+        .order_by(repo.ProductMatch.score.desc())
+        .limit(pagination.page_size)
+        .offset(pagination.offset)
+    )
+    items = [
+        {
+            "id": match.id,
+            "observation_id": observation.id,
+            "product_id": product.id if product else None,
+            "left_name": observation.name,
+            "right_name": product.canonical_name if product else None,
+            "left_price_minor": observation.price_minor,
+            "left_image": (observation.image_urls_json or [None])[0],
+            "right_image": (product.image_urls_json or [None])[0] if product else None,
+            "score": match.score,
+            "method": match.method,
+            "status": match.status,
+        }
+        for match, observation, product in result.all()
+    ]
+    return pagination.envelope(total or 0, items)
+
+
+async def decide_match(
+    session: AsyncSession, match_id: int, confirm: bool, actor: str
+) -> dict:
+    """Подтвердить/отклонить пару; при подтверждении связать observation."""
+    match = await repo.update_match_decision(session, match_id, confirm, actor)
+    if match is None:
+        raise ApiError(404, "NOT_FOUND", f"ProductMatch#{match_id} не найден")
+    if confirm and match.product_id is not None:
+        observation = await session.get(repo.Observation, match.observation_id)
+        if observation is not None:
+            observation.product_id = match.product_id
+    await repo.audit(session, "match.decide", "", match_id=match_id, confirm=confirm)
+    await session.commit()
+    return {"id": match.id, "status": match.status, "product_id": match.product_id}
+
+
+async def get_metrics(session: AsyncSession) -> dict:
+    """Метрики качества сопоставления и покрытия каталога."""
+    total = await session.scalar(select(func.count()).select_from(repo.Observation))
+    linked = await session.scalar(
+        select(func.count())
+        .select_from(repo.Observation)
+        .where(repo.Observation.product_id.is_not(None))
+    )
+    status_rows = (
+        await session.execute(
+            select(repo.ProductMatch.status, func.count()).group_by(repo.ProductMatch.status)
+        )
+    ).all()
+    statuses: dict[str, int] = {row[0]: row[1] for row in status_rows}
+    exports = await session.scalar(select(func.count()).select_from(repo.TrainingExport))
+    auto, review = statuses.get("auto", 0), statuses.get("review", 0)
+    return {
+        "observations": total or 0,
+        "linked_observations": linked or 0,
+        "coverage": round((linked or 0) / total, 3) if total else 0.0,
+        "matches_by_status": statuses,
+        "auto_rate": round(auto / (auto + review), 3) if auto + review else 0.0,
+        "exports": exports or 0,
+        "model_version": MODEL_VERSION,
+    }
+
+
 async def export_dataset(
     session: AsyncSession, settings: Settings, name: str, version: str
 ) -> dict:
-    """Сформировать JSONL-датасет и манифест (DESIGN_DATA_ML § 5)."""
+    """Сформировать JSONL-датасет пар «один товар в двух магазинах»."""
     from pricescope_ml.export import build_export
 
-    result = await session.execute(
-        select(repo.ProductMatch).where(repo.ProductMatch.status == "confirmed")
-    )
-    pairs = [
-        {"id": m.id, "observation_id": m.observation_id, "product_id": m.product_id}
-        for m in result.scalars()
-    ]
+    matches = (
+        await session.execute(
+            select(repo.ProductMatch).where(
+                repo.ProductMatch.status.in_(("auto", "confirmed"))
+            )
+        )
+    ).scalars().all()
+    pairs: list[dict[str, Any]] = []
+    exported_at = datetime.now(UTC).isoformat()
+    for match in matches:
+        if match.product_id is None:
+            continue
+        left = await session.get(repo.Observation, match.observation_id)
+        if left is None:
+            continue
+        right = (
+            await session.execute(
+                select(repo.Observation)
+                .where(
+                    repo.Observation.product_id == match.product_id,
+                    repo.Observation.store_code != left.store_code,
+                )
+                .order_by(desc(repo.Observation.observed_at))
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        if right is None:
+            continue
+        pairs.append(
+            {
+                "product_id": match.product_id,
+                "left": {
+                    "store": left.store_code,
+                    "external_id": left.external_id,
+                    "name": left.name,
+                    "price_minor": left.price_minor,
+                    "image_url": (left.image_urls_json or [None])[0],
+                },
+                "right": {
+                    "store": right.store_code,
+                    "external_id": right.external_id,
+                    "name": right.name,
+                    "price_minor": right.price_minor,
+                    "image_url": (right.image_urls_json or [None])[0],
+                },
+                "label": "match",
+                "match_method": match.method,
+                "model_version": match.model_version,
+                "observed_at": right.observed_at.isoformat(),
+                "exported_at": exported_at,
+            }
+        )
+
     out_dir = settings.datasets_dir / f"{name}-v{version}"
-    manifest = build_export(pairs, out_dir, name=name, version=version)
+    manifest = build_export(
+        pairs, out_dir, name=name, version=version, extra={"pair_count": len(pairs)}
+    )
     export = await repo.create_training_export(
         session, name, version, manifest, manifest.get("rows", {}), str(out_dir)
     )

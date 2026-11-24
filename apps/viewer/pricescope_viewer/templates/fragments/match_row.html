@@ -1,7 +1,10 @@
 <tr id="match-{{ row.id }}">
   <td>{{ row.id }}</td>
-  <td>#{{ row.observation_id }}</td>
-  <td>{{ row.product_id or '—' }}</td>
+  <td>
+    <strong>{{ row.left_name or ('#' ~ row.observation_id) }}</strong>
+    {% if row.left_price_minor %}<br><small class="muted">{{ format_rub(row.left_price_minor) }}</small>{% endif %}
+  </td>
+  <td>{{ row.right_name or ('#' ~ row.product_id if row.product_id else '—') }}</td>
   <td><span class="badge">{{ row.method }}</span></td>
   <td>{{ '%.2f'|format(row.score) }}</td>
   <td>

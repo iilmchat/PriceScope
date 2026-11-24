@@ -28,21 +28,26 @@ def build_export(
     *,
     name: str = "product-matching",
     version: str = "1",
+    extra: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Собрать train/val/test split по времени и записать манифест."""
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     now = datetime.now(UTC)
 
-    # Простая time-based симуляция: каждая пара несёт observed_at (если есть).
-    ordered = sorted(pairs, key=lambda row: row.get("observed_at", ""))
-    n_val = max(1, int(len(ordered) * 0.15))
-    n_test = max(1, int(len(ordered) * 0.15))
-    splits = {
-        "train": ordered[: max(0, len(ordered) - n_val - n_test)],
-        "val": ordered[max(0, len(ordered) - n_val - n_test) : len(ordered) - n_test],
-        "test": ordered[len(ordered) - n_test :],
-    }
+    # Time-based split: обучаемся на старых observation, проверяем на новых.
+    ordered = sorted(pairs, key=lambda row: str(row.get("observed_at", "")))
+    if len(ordered) < 3:
+        splits = {"train": ordered, "val": [], "test": []}
+    else:
+        n_val = max(1, int(len(ordered) * 0.15))
+        n_test = max(1, int(len(ordered) * 0.15))
+        train_end = len(ordered) - n_val - n_test
+        splits = {
+            "train": ordered[:train_end],
+            "val": ordered[train_end : len(ordered) - n_test],
+            "test": ordered[len(ordered) - n_test :],
+        }
 
     checksums: dict[str, str] = {}
     for split, rows in splits.items():
@@ -56,11 +61,16 @@ def build_export(
         "schema_version": 1,
         "created_at": now.isoformat(),
         "split_policy": "time-based",
+        "split_boundaries": {
+            "val_from": splits["val"][0].get("observed_at") if splits["val"] else None,
+            "test_from": splits["test"][0].get("observed_at") if splits["test"] else None,
+        },
         "rows": {split: len(rows) for split, rows in splits.items()},
         "source_count": len(pairs),
         "sha256": checksums,
         "parsers": {"lenta": "0.1.0", "pyaterochka": "0.1.0"},
         "models": {"lexical": "builtin-v1", "text": "not-configured", "image": "not-configured"},
+        **(extra or {}),
     }
     (out_dir / "manifest.json").write_text(
         canonical_json(manifest) + "\n", encoding="utf-8"

@@ -136,6 +136,30 @@ async def update_match_decision(
     return match
 
 
+async def create_product_match(
+    session: AsyncSession,
+    observation_id: int,
+    product_id: int | None,
+    *,
+    method: str,
+    score: float,
+    status: str,
+    model_version: str,
+) -> ProductMatch:
+    """Записать решение сопоставления."""
+    match = ProductMatch(
+        observation_id=observation_id,
+        product_id=product_id,
+        method=method,
+        score=score,
+        status=status,
+        model_version=model_version,
+    )
+    session.add(match)
+    await session.flush()
+    return match
+
+
 async def create_training_export(
     session: AsyncSession, name: str, version: str, manifest: dict, rows: dict, path: str
 ) -> TrainingExport:

@@ -3,17 +3,18 @@
 from __future__ import annotations
 
 from datetime import date
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query
-from pricescope_core import MatchStatus
+from fastapi.responses import FileResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pricescope_api import repositories as repo
 from pricescope_api import services
 from pricescope_api.config import Settings, get_settings
-from pricescope_api.db.models import Product, ProductMatch, Store
+from pricescope_api.db.models import Product, Store
 from pricescope_api.db.session import get_session
 from pricescope_api.errors import ApiError
 from pricescope_api.pagination import Pagination, paginate_params
@@ -233,36 +234,19 @@ async def get_import(run_id: int, session: AsyncSession = Depends(get_session)) 
     })
 
 
+@api.post("/matches/run")
+async def run_matching(session: AsyncSession = Depends(get_session)) -> dict:
+    """Запустить entity resolution по observation без product_id."""
+    return ok(await services.run_matching(session))
+
+
 @api.get("/matches/review")
 async def review_queue(
     pagination: Pagination = Depends(paginate_params),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
-    """Очередь спорных сопоставлений (0.70…0.90)."""
-    condition = ProductMatch.status == MatchStatus.REVIEW
-    total = await session.scalar(
-        select(func.count()).select_from(ProductMatch).where(condition)
-    )
-    result = await session.execute(
-        select(ProductMatch)
-        .where(condition)
-        .order_by(ProductMatch.score.desc())
-        .limit(pagination.page_size)
-        .offset(pagination.offset)
-    )
-    return ok(
-        pagination.envelope(
-            total or 0,
-            [
-                {
-                    "id": m.id, "observation_id": m.observation_id,
-                    "product_id": m.product_id, "score": m.score,
-                    "method": m.method, "status": m.status,
-                }
-                for m in result.scalars()
-            ],
-        )
-    )
+    """Очередь спорных сопоставлений (0.70…0.90) с названиями и ценами."""
+    return ok(await services.get_review_rows(session, pagination))
 
 
 @api.post("/matches/{match_id}/decide")
@@ -270,12 +254,13 @@ async def decide_match(
     match_id: int, body: DecideRequest, session: AsyncSession = Depends(get_session)
 ) -> dict:
     """Подтвердить/отклонить совпадение."""
-    match = await repo.update_match_decision(session, match_id, body.confirm, body.actor)
-    if match is None:
-        raise ApiError(404, "NOT_FOUND", f"ProductMatch#{match_id} не найден")
-    await repo.audit(session, "match.decide", "", match_id=match_id, confirm=body.confirm)
-    await session.commit()
-    return ok({"id": match.id, "status": match.status})
+    return ok(await services.decide_match(session, match_id, body.confirm, body.actor))
+
+
+@api.get("/metrics")
+async def metrics(session: AsyncSession = Depends(get_session)) -> dict:
+    """Метрики сопоставления и покрытия каталога."""
+    return ok(await services.get_metrics(session))
 
 
 @api.post("/exports")
@@ -294,3 +279,20 @@ async def get_export(export_id: int, session: AsyncSession = Depends(get_session
     export = await services.get_or_404(session, repo.TrainingExport, export_id)
     return ok({"id": export.id, "name": export.name, "version": export.version,
                "manifest": export.manifest_json, "path": export.path})
+
+
+@api.get("/exports/{export_id}/download")
+async def download_export(
+    export_id: int,
+    file: str = Query("train.jsonl", description="Имя файла из manifest.sha256"),
+    session: AsyncSession = Depends(get_session),
+) -> FileResponse:
+    """Скачать один из файлов датасета (только перечисленные в манифесте)."""
+    export = await services.get_or_404(session, repo.TrainingExport, export_id)
+    allowed = (export.manifest_json or {}).get("sha256", {})
+    if file not in allowed:
+        raise ApiError(404, "NOT_FOUND", f"Файл {file!r} не входит в манифест")
+    path = Path(export.path) / file
+    if not path.is_file():
+        raise ApiError(404, "NOT_FOUND", f"Файл {file!r} не найден на диске")
+    return FileResponse(path, media_type="application/x-ndjson", filename=file)
