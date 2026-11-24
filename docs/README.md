@@ -13,7 +13,7 @@
 | **Пользователь** | [user_guide/USER_GUIDE.md](user_guide/USER_GUIDE.md) — локальный viewer, Flutter-клиент, сравнение |
 | **Тестировщик** | [qa/MANUAL_TESTING_GUIDE.md](qa/MANUAL_TESTING_GUIDE.md) — чек-лист ручной приёмки |
 | **Разработчик** | [development/RULES.md](development/RULES.md) → [development/ARCHITECTURE.md](development/ARCHITECTURE.md) → [development/RELEASES.md](development/RELEASES.md) |
-| **Впервые в проекте** | [README.md](../README.md) — установка, CLI, API, обзор |
+| **Впервые в проекте** | [GET_STARTED.md](../GET_STARTED.md) — разворачивание и настройка · [README.md](../README.md) — обзор |
 
 ---
 

@@ -29,6 +29,7 @@ PriceScope превращает разрозненные парсеры и Excel
 
 | Кому | Документ |
 | :--- | :--- |
+| Всем | **[GET_STARTED.md](GET_STARTED.md)** — разворачивание и первичная настройка |
 | Всем | [docs/README.md](docs/README.md) — хаб документации (навигация по ролям) |
 | Пользователям | [docs/user_guide/USER_GUIDE.md](docs/user_guide/USER_GUIDE.md) — просмотровщик, клиент, сравнение |
 | Тестировщикам | [docs/qa/MANUAL_TESTING_GUIDE.md](docs/qa/MANUAL_TESTING_GUIDE.md) — чек-лист ручной приёмки |
@@ -72,6 +73,9 @@ flutter pub get
 ---
 
 ## Быстрый старт (локальный режим)
+
+> Полное пошаговое руководство по разворачиванию, конфигурации и устранению
+> проблем — [GET_STARTED.md](GET_STARTED.md).
 
 ```powershell
 # 1. Создать схему БД
