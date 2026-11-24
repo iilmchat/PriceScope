@@ -41,7 +41,7 @@ parser5ka = [
 ]
 ml = [
     "numpy>=1.26,<3",
-    "sentence-transformers>=3,<5",
+    "sentence-transformers>=3,<7",
 ]
 
 [project.scripts]
