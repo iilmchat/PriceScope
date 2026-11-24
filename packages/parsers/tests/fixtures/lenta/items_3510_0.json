@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "id": 800001,
+      "categoryId": 3510,
+      "name": "Шампунь ШАУМА Объём, 400мл",
+      "prices": { "cost": 34990, "isPromoactionPrice": false },
+      "weight": { "package": "400мл", "gross": 430, "net": 400 },
+      "images": [
+        {
+          "position": 1,
+          "pathLarge": "https://cdn.api.lenta.com/resample/webp/900x900/photo/800001/bbb222.png"
+        }
+      ]
+    }
+  ]
+}

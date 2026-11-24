@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "id": 736813,
+      "categoryId": 3509,
+      "name": "Дезодорант NIVEA Fresh, 150мл",
+      "prices": { "cost": 18990, "costRegular": 0, "isPromoactionPrice": false },
+      "weight": { "package": "150мл", "gross": 160, "net": 150 },
+      "images": [
+        {
+          "position": 1,
+          "pathLarge": "https://cdn.api.lenta.com/resample/webp/900x900/photo/736813/aaa111.png"
+        }
+      ]
+    }
+  ]
+}

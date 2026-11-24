@@ -1,0 +1,62 @@
+{
+  "categoryId": 3509,
+  "count": 10,
+  "dimensions": {
+    "height": 130,
+    "length": 45,
+    "width": 45
+  },
+  "features": {
+    "isAdult": false,
+    "isAlcohol": false,
+    "isBlockedForSale": false,
+    "isMarkType": true,
+    "isMercurial": false,
+    "isOnlyPickup": false,
+    "isPartner": false,
+    "isPromo": false,
+    "isWeight": false
+  },
+  "id": 736811,
+  "images": [
+    {
+      "id": 736811,
+      "pathIcon": "https://cdn.api.lenta.com/resample/webp/100x100/photo/736811/fbce23d2-7d07-4890-9163-0b62024ea6f0.png",
+      "pathLarge": "https://cdn.api.lenta.com/resample/webp/900x900/photo/736811/fbce23d2-7d07-4890-9163-0b62024ea6f0.png",
+      "pathMedium": "https://cdn.api.lenta.com/resample/webp/500x500/photo/736811/fbce23d2-7d07-4890-9163-0b62024ea6f0.png",
+      "pathOriginal": "https://cdn.api.lenta.com/resample/webp/0x0/photo/736811/fbce23d2-7d07-4890-9163-0b62024ea6f0.png",
+      "pathPreview": "https://cdn.api.lenta.com/resample/webp/250x250/photo/736811/fbce23d2-7d07-4890-9163-0b62024ea6f0.png",
+      "position": 1
+    },
+    {
+      "id": 736811,
+      "pathIcon": "https://cdn.api.lenta.com/resample/webp/100x100/photo/736811/63dee464-d254-4a14-b6e8-d8f43559e7aa.png",
+      "pathLarge": "https://cdn.api.lenta.com/resample/webp/900x900/photo/736811/63dee464-d254-4a14-b6e8-d8f43559e7aa.png",
+      "pathMedium": "https://cdn.api.lenta.com/resample/webp/500x500/photo/736811/63dee464-d254-4a14-b6e8-d8f43559e7aa.png",
+      "pathOriginal": "https://cdn.api.lenta.com/resample/webp/0x0/photo/736811/63dee464-d254-4a14-b6e8-d8f43559e7aa.png",
+      "pathPreview": "https://cdn.api.lenta.com/resample/webp/250x250/photo/736811/63dee464-d254-4a14-b6e8-d8f43559e7aa.png",
+      "position": 2
+    }
+  ],
+  "name": "Дезодорант-спрей женский РЕКСОНА Сухость пудры, 100мл",
+  "prices": {
+    "cost": 22999,
+    "costRegular": 28499,
+    "isLoyaltyCardPrice": false,
+    "isPromoactionPrice": true,
+    "price": 22999,
+    "priceRegular": 28499
+  },
+  "saleLimit": {
+    "foldQuantity": 1,
+    "maxSaleQuantity": 10,
+    "minSaleQuantity": 1
+  },
+  "slug": "dezodorant-suhost-pudry-aerozol-rossiya-100ml",
+  "storeId": 233,
+  "weight": {
+    "gross": 90,
+    "net": 0,
+    "package": "100мл"
+  }
+}

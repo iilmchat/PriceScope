@@ -1,0 +1,27 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    ports:
+      - "8765:8765"
+    environment:
+      PRICESCOPE_MODE: local
+      PRICESCOPE_DB_PATH: /app/data/pricescope.db
+      PRICESCOPE_HOST: 0.0.0.0
+      PRICESCOPE_PORT: "8765"
+    volumes:
+      - ./data:/app/data
+      - ./datasets:/app/datasets
+
+  # Серверный режим (v0.2+)
+  # db:
+  #   image: postgres:16
+  #   environment:
+  #     POSTGRES_DB: pricescope
+  #     POSTGRES_USER: pricescope
+  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  #   volumes:
+  #     - pgdata:/var/lib/postgresql/data
+  # volumes:
+  #   pgdata:

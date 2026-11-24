@@ -1,0 +1,24 @@
+{
+  "items": [
+    {
+      "id": 736811,
+      "categoryId": 3509,
+      "name": "Дезодорант-спрей женский РЕКСОНА Сухость пудры, 100мл",
+      "prices": { "cost": 19999, "costRegular": 28499, "isPromoactionPrice": true },
+      "weight": { "package": "100мл", "gross": 90, "net": 0 },
+      "images": [
+        {
+          "position": 1,
+          "pathLarge": "https://cdn.api.lenta.com/resample/webp/900x900/photo/736811/fbce23d2.png"
+        }
+      ]
+    },
+    {
+      "id": 736812,
+      "categoryId": 3509,
+      "name": "Дезодорант ДОЛЬЧЕ&ГАБАНА, 50мл",
+      "prices": { "cost": 57900, "priceRegular": 69900, "isPromoactionPrice": false },
+      "weight": { "package": "50мл", "gross": 55, "net": 50 }
+    }
+  ]
+}

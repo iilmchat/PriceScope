@@ -1,0 +1,16 @@
+<table class="data">
+  <thead><tr><th>Фото</th><th>Название</th><th>Магазин</th><th>Цена</th><th>Наблюдение</th></tr></thead>
+  <tbody>
+  {% for row in rows %}
+    <tr>
+      <td>{% if row.image_urls_json %}<img src="{{ row.image_urls_json[0] }}" alt="" loading="lazy">{% else %}—{% endif %}</td>
+      <td>{{ row.name }}</td>
+      <td>{{ row.store_code }}</td>
+      <td class="price">{{ '{:,.2f}'.format(row.price_minor / 100) }} ₽</td>
+      <td>{{ row.observed_at.strftime('%d.%m.%Y %H:%M') }}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="5" class="muted">Нет данных. Запустите импорт: <code>pricescope parse --store lenta</code></td></tr>
+  {% endfor %}
+  </tbody>
+</table>

@@ -1,0 +1,7 @@
+{
+  "categories": [
+    { "id": 100, "name": "Красота", "parentId": 0 },
+    { "id": 3509, "name": "Дезодоранты", "parentId": 100 },
+    { "id": 3510, "name": "Шампуни", "parentId": 100 }
+  ]
+}
