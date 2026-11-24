@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from contextlib import AsyncExitStack
 from datetime import UTC, datetime
 from math import asin, cos, radians, sin, sqrt
@@ -44,6 +45,11 @@ async def run_import(
     http_client: httpx.AsyncClient | None = None,
 ) -> dict:
     """Запустить парсер и записать результаты в БД."""
+    # Pydantic читает .env, но не экспортирует значения в os.environ;
+    # Camoufox берёт путь к exe именно из переменной окружения.
+    if settings.camoufox_executable and not os.getenv("CAMOUFOX_EXECUTABLE_PATH"):
+        os.environ["CAMOUFOX_EXECUTABLE_PATH"] = settings.camoufox_executable
+
     parser = get_parser(store_code)
     if idempotency_key:
         existing = await session.execute(

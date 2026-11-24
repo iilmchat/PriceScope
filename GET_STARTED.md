@@ -89,7 +89,7 @@ Copy-Item .env.example .env
 | `PRICESCOPE_LENTA_BRAND` / `..._CHANNEL` | `lo` / `lo` | витрина и канал Ленты |
 | `PRICESCOPE_LENTA_PAGE_LIMIT` | `50` | размер страницы каталога |
 | `PRICESCOPE_LENTA_PAGE_DELAY` | `0.3` | пауза между страницами (сек) |
-| `CAMOUFOX_EXECUTABLE_PATH` | — | **обязателен для Пятёрочки**, путь к `camoufox.exe` |
+| `CAMOUFOX_EXECUTABLE_PATH` | — | **обязателен для Пятёрочки**, путь именно к `camoufox.exe`, например `C:\Users\Z1\AppData\Local\camoufox\camoufox-158.0.1-beta.41\camoufox.exe` |
 | `PRICESCOPE_PROXY` | — | опциональный прокси для браузера |
 
 **Секреты не коммитятся**: `.env` уже в `.gitignore`. Никогда не храните ключи/пароли

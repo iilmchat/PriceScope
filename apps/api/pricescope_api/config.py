@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     default_lon: float = 36.7323
     raw_retention_days: int = 90
     auto_migrate: bool = True  # тесты отключают: схема создаётся фикстурой
+    # Без префикса PRICESCOPE_: браузерный слой читает именно эту переменную
+    camoufox_executable: str | None = Field(
+        default=None, validation_alias="CAMOUFOX_EXECUTABLE_PATH"
+    )
 
     @property
     def database_url(self) -> str:
