@@ -136,6 +136,15 @@ async def update_match_decision(
     return match
 
 
+async def set_observation_photo_path(
+    session: AsyncSession, observation_id: int, photo_path: str
+) -> None:
+    """Привязать скачанное фото к observation (не трогает content_hash)."""
+    await session.execute(
+        update(Observation).where(Observation.id == observation_id).values(photo_path=photo_path)
+    )
+
+
 async def create_raw_snapshot(
     session: AsyncSession,
     *,

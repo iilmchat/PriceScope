@@ -4,7 +4,7 @@
   <tbody>
   {% for row in pagination['items'] %}
     <tr>
-      <td>{% if row.image_urls_json %}<img src="{{ row.image_urls_json[0] }}" alt="" loading="lazy">{% else %}<span class="muted">—</span>{% endif %}</td>
+      <td>{% set img = row.photo_path or (row.image_urls_json[0] if row.image_urls_json else none) %}{% if img %}<img src="{{ img }}" alt="" loading="lazy">{% else %}<span class="muted">—</span>{% endif %}</td>
       <td><strong>{{ row.name }}</strong><br><small class="muted">{{ row.package or '' }}</small></td>
       <td>{{ row.category_path or '—' }}</td>
       <td><span class="badge">{{ row.store_code }}</span></td>

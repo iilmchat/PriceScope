@@ -181,7 +181,21 @@ pricescope import-legacy
 
 Результат для текущего файла: 31 228 товаров, 23 050 из них с локальным фото.
 
-### 5.5. Проверка импорта
+### 5.5. Дозагрузка оставшихся фото
+
+У части товаров локального фото не было, но в Excel осталась ссылка на CDN.
+Скачайте их отдельной командой:
+
+```powershell
+pricescope fetch-photos --concurrency 12
+# ограничить количество: pricescope fetch-photos --limit 100
+```
+
+Файлы складываются в `data/photos/lenta/{id}/`, viewer отдаёт их через `/photos/...`.
+Путь хранится в отдельном поле `photo_path` и **не меняет `content_hash` цены** —
+повторный импорт Excel не откатит результат. У товаров без URL останется заглушка.
+
+### 5.6. Проверка импорта
 
 ```powershell
 python -c "import sqlite3; c=sqlite3.connect('data/pricescope.db'); print(c.execute('select count(*) from observations').fetchone()[0])"

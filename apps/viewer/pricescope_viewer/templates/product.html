@@ -5,7 +5,7 @@
 <h1>{{ observation.name }}</h1>
 
 <section class="product-head">
-  {% if observation.image_urls_json %}<img class="product-photo" src="{{ observation.image_urls_json[0] }}" alt="">{% endif %}
+  {% set img = observation.photo_path or (observation.image_urls_json[0] if observation.image_urls_json else none) %}{% if img %}<img class="product-photo" src="{{ img }}" alt="">{% endif %}
   <div>
     <p><strong>Цена:</strong> {{ format_rub(observation.price_minor) }}
        {% if observation.old_price_minor %}<s>{{ format_rub(observation.old_price_minor) }}</s>{% endif %}</p>

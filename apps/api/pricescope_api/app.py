@@ -62,7 +62,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     except ImportError:
         pass
 
-    # Legacy-фото отдаём напрямую из каталога проекта (~10 ГБ, копировать нельзя)
+    # Дозагруженные фото (data/photos) и legacy-каталог (~10 ГБ) — только чтение
+    settings.photos_dir.mkdir(parents=True, exist_ok=True)
+    app.mount(
+        "/photos",
+        StaticFiles(directory=str(settings.photos_dir)),
+        name="photos",
+    )
     legacy_photos = PROJECT_ROOT / "photos"
     if legacy_photos.is_dir():
         app.mount(

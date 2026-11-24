@@ -7,6 +7,9 @@
 ## [Unreleased]
 
 ### Added
+- `pricescope fetch-photos`: дозагрузка фото по URL из observation (параллельно,
+  идемпотентно). Путь пишется в новое поле `photo_path` (миграция `9a1b2c3d4e5f`),
+  не меняя `content_hash` цены; viewer и API отдают `/photos/...` (PL-016); 2 теста.
 - `pricescope import-legacy`: перенос строк `lenta_prices.xlsx` в `Observation`
   с lineage через `RawSnapshot`; legacy-фото отдаются viewer'ом через `/legacy-photos`
   без копирования ~10 ГБ (PL-015); 2 теста.

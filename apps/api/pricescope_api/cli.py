@@ -36,6 +36,10 @@ def build_parser() -> argparse.ArgumentParser:
     serve.add_argument("--host", default=None)
     serve.add_argument("--port", type=int, default=None)
 
+    photos = sub.add_parser("fetch-photos", help="дозагрузить фото по URL из БД")
+    photos.add_argument("--limit", type=int, default=None, help="максимум observation за запуск")
+    photos.add_argument("--concurrency", type=int, default=8, help="параллельные загрузки")
+
     legacy = sub.add_parser("import-legacy", help="импортировать legacy Excel и фото")
     legacy.add_argument(
         "--excel",
@@ -97,6 +101,19 @@ async def _async_command(args: argparse.Namespace) -> int:
             if result.get("error_code"):
                 print(f"Ошибка: {result['error_code']} — {result.get('error_message') or ''}")
                 return 1
+            return 0
+
+        if args.command == "fetch-photos":
+            from pricescope_api.services import fetch_photos
+
+            result = await fetch_photos(
+                session, settings, limit=args.limit, concurrency=args.concurrency
+            )
+            print(
+                f"Фото: скачано={result['downloaded']} уже было={result['reused']} "
+                f"локальных={result['already_local']} ошибок={result['failed']} "
+                f"без источника={result['no_source']}"
+            )
             return 0
 
         if args.command == "import-legacy":

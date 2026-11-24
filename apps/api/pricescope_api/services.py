@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 from contextlib import AsyncExitStack
 from datetime import UTC, datetime
@@ -10,7 +11,7 @@ from math import asin, cos, radians, sin, sqrt
 from typing import Any
 
 import httpx
-from pricescope_core import ParseStatus, extract_measure
+from pricescope_core import ParseStatus, extract_measure, sha256_text
 from pricescope_ml.matching import (
     MODEL_VERSION,
     MatchCandidate,
@@ -21,8 +22,9 @@ from pricescope_ml.matching import (
 from pricescope_parsers.base import ParseContext
 from pricescope_parsers.registry import get_parser
 from pricescope_parsers.snapshots import RawSnapshotStore
-from sqlalchemy import desc, func, select
+from sqlalchemy import cast, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql.sqltypes import String
 
 from pricescope_api import repositories as repo
 from pricescope_api.config import Settings
@@ -267,6 +269,131 @@ def _unit_prices(observation: Any) -> tuple[int | None, int | None]:
         grams = float(value) if unit == "г" else float(value) * 1000
         return round(observation.price_minor * 1000 / grams), None
     return None, None
+
+
+async def fetch_photos(
+    session: AsyncSession,
+    settings: Settings,
+    *,
+    http_client: httpx.AsyncClient | None = None,
+    limit: int | None = None,
+    concurrency: int = 8,
+    max_bytes: int = 8 * 1024 * 1024,
+) -> dict[str, int]:
+    """Дозагрузить фото по URL из observation без локального фото.
+
+    Путь пишется в отдельное поле `photo_path`, поэтому `content_hash` цены
+    не меняется и повторный импорт Excel не откатывает результат.
+    """
+    stmt = (
+        select(repo.Observation)
+        .where(repo.Observation.photo_path.is_(None))
+        # сразу отсекаем строки без URL — не сканируем их при каждом прогоне
+        .where(cast(repo.Observation.image_urls_json, String).like("%http%"))
+        .order_by(repo.Observation.id)
+    )
+    if limit is not None:
+        stmt = stmt.limit(limit)
+    rows = (await session.execute(stmt)).scalars().all()
+
+    semaphore = asyncio.Semaphore(max(1, concurrency))
+    counts = {
+        "downloaded": 0,
+        "reused": 0,
+        "failed": 0,
+        "no_source": 0,
+        "already_local": 0,
+    }
+    photos_dir = settings.photos_dir / "lenta"
+    own_client = None
+    client = http_client
+    if client is None:
+        own_client = httpx.AsyncClient(timeout=20, follow_redirects=True)
+        client = own_client
+
+    async def save_one(item: Any, url: str) -> tuple[str, bool]:
+        async with semaphore:
+            content_type = ""
+            payload = b""
+            # DNS/сеть могут временно сдаваться при тысячах запросов — ретраим
+            for attempt in range(3):
+                try:
+                    async with client.stream("GET", url) as response:
+                        response.raise_for_status()
+                        content_type = response.headers.get("content-type", "").lower()
+                        payload = b"".join([chunk async for chunk in response.aiter_bytes()])
+                    break
+                except Exception:
+                    if attempt == 2:
+                        raise
+                    await asyncio.sleep(1.5 * (attempt + 1))
+            if not content_type.startswith("image/"):
+                raise ValueError(f"Не изображение: {content_type!r}")
+            if not payload or len(payload) > max_bytes:
+                raise ValueError(f"Недопустимый размер: {len(payload)}")
+            ext = {
+                "image/webp": "webp",
+                "image/png": "png",
+                "image/jpeg": "jpg",
+                "image/jpg": "jpg",
+                "image/gif": "gif",
+            }.get(content_type.split(";")[0], "img")
+            target_dir = photos_dir / str(item.external_id)
+            target = target_dir / f"{sha256_text(url)[:16]}.{ext}"
+            if not target.exists():
+                target_dir.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(payload)
+                downloaded = True
+            else:
+                downloaded = False
+            return f"/photos/lenta/{item.external_id}/{target.name}", downloaded
+
+    try:
+        for index, item in enumerate(rows, start=1):
+            raw_urls = item.image_urls_json
+            if isinstance(raw_urls, str):
+                try:
+                    urls = json.loads(raw_urls)
+                except (TypeError, ValueError):
+                    urls = []
+            elif isinstance(raw_urls, (list, tuple)):
+                urls = list(raw_urls)
+            else:
+                urls = []
+            # У legacy-товаров уже есть локальный фото в image_urls — качать нечем,
+            # просто фиксируем путь, чтобы последующие прогоны их не трогали.
+            local = next((str(url) for url in urls if str(url).startswith("/")), None)
+            if local is not None:
+                await repo.set_observation_photo_path(session, item.id, local)
+                counts["already_local"] += 1
+                continue
+
+            remote = next((str(url) for url in urls if str(url).startswith("http")), None)
+            if remote is None:
+                counts["no_source"] += 1
+                continue
+            try:
+                path, downloaded = await save_one(item, remote)
+                await repo.set_observation_photo_path(session, item.id, path)
+                counts["downloaded" if downloaded else "reused"] += 1
+            except Exception as exc:
+                counts["failed"] += 1
+                logger.warning(
+                    "photo_download_failed",
+                    external_id=item.external_id,
+                    error=str(exc),
+                    trace_id=current_trace_id(),
+                )
+            if index % 100 == 0:
+                await session.commit()
+        await session.commit()
+    finally:
+        if own_client is not None:
+            await own_client.aclose()
+
+    await repo.audit(session, "photos.fetch", current_trace_id(), counts=counts)
+    await session.commit()
+    return counts
 
 
 def _candidate(item: Any) -> MatchCandidate:

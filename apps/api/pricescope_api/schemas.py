@@ -70,6 +70,7 @@ class ObservationDto(BaseModel):
     package: str | None = None
     observed_at: datetime
     raw_ref: str
+    photo_path: str | None = None
 
 
 class CompareRowDto(BaseModel):

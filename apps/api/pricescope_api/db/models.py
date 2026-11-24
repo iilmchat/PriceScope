@@ -117,6 +117,8 @@ class Observation(Base, TimestampMixin):
     parser_version: Mapped[str] = mapped_column(String(32))
     schema_version: Mapped[int] = mapped_column(Integer, default=1)
     content_hash: Mapped[str] = mapped_column(String(64), index=True)
+    # Обогащение фото: не входит в content_hash (ценовой факт остаётся неизменным)
+    photo_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
 
     product: Mapped[Product | None] = relationship()
 

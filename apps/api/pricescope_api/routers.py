@@ -55,6 +55,7 @@ def _observation_dto(item: Any) -> dict[str, Any]:
         "package": item.package,
         "observed_at": item.observed_at.isoformat(),
         "raw_ref": item.raw_ref,
+        "photo_path": item.photo_path,
     }
 
 
