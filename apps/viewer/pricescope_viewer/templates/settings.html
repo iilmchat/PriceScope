@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Настройки</h1>
+<section class="panel">
+  <h2>Локальный режим</h2>
+  <ul>
+    <li>API и просмотровщик: <code>http://127.0.0.1:8765</code></li>
+    <li>БД: <code>data/pricescope.db</code> (SQLite, миграции Alembic)</li>
+    <li>Сырые ответы: <code>data/raw/</code> · фото: <code>data/photos/</code></li>
+    <li>Датасеты: <code>datasets/exports/</code></li>
+  </ul>
+  <p class="muted">Настройки задаются переменными окружения с префиксом <code>PRICESCOPE_</code>
+     (шаблон — <code>.env.example</code>). Секреты в git не попадают.</p>
+</section>
+<section class="panel">
+  <h2>Политика парсинга</h2>
+  <p>Соблюдаем robots.txt и ToS магазинов. При обнаружении CAPTCHA парсер останавливается
+     и пишет диагностику в журнал импортов — автоматический обход запрещён (ADR-006).</p>
+</section>
+{% endblock %}

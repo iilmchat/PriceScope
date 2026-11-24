@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block content %}
+{% if observation %}
+<a href="/products">← К списку товаров</a>
+<h1>{{ observation.name }}</h1>
+
+<section class="product-head">
+  {% if observation.image_urls_json %}<img class="product-photo" src="{{ observation.image_urls_json[0] }}" alt="">{% endif %}
+  <div>
+    <p><strong>Цена:</strong> {{ format_rub(observation.price_minor) }}
+       {% if observation.old_price_minor %}<s>{{ format_rub(observation.old_price_minor) }}</s>{% endif %}</p>
+    <p><strong>Магазин:</strong> {{ observation.store_code }} · <strong>Точка:</strong> {{ observation.location_id or '—' }}</p>
+    <p><strong>Фасовка:</strong> {{ observation.package or '—' }} · <strong>Категория:</strong> {{ observation.category_path or '—' }}</p>
+    <p class="muted">Последнее наблюдение: {{ observation.observed_at.strftime('%d.%m.%Y %H:%M') }} UTC</p>
+    <a class="button" href="/compare?query={{ observation.name|urlencode }}">Сравнить цены →</a>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>История цен</h2>
+  {{ chart|safe }}
+  <table class="data compact">
+    <thead><tr><th>Дата (UTC)</th><th>Цена</th><th>Магазин</th><th>Источник (sha256)</th></tr></thead>
+    <tbody>
+    {% for row in history %}
+      <tr><td>{{ row.observed_at.strftime('%d.%m.%Y %H:%M') }}</td>
+          <td class="price">{{ format_rub(row.price_minor) }}</td>
+          <td>{{ row.store_code }}</td>
+          <td><code>{{ row.raw_ref[:12] }}…</code></td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% else %}
+<h1>Товар не найден</h1>
+<p class="muted">Проверьте `external_id` или <a href="/products">вернитесь к списку</a>.</p>
+{% endif %}
+{% endblock %}

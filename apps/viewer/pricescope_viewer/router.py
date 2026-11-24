@@ -1,16 +1,21 @@
-"""Роуты локального просмотровщика."""
+"""Роуты локального просмотровщика PriceScope (Jinja2 + HTMX)."""
 
 from __future__ import annotations
 
+from html import escape
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from pricescope_api.db.models import Observation, ParseRun
+from pricescope_api import repositories as repo
+from pricescope_api.db.models import Observation, ParseRun, ProductMatch
 from pricescope_api.db.session import get_session
-from sqlalchemy import select
+from pricescope_api.pagination import Pagination
+from pricescope_api.services import compare_prices
+from pricescope_core import MatchStatus, format_rub
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 _TEMPLATES = Path(__file__).parent / "templates"
@@ -26,23 +31,86 @@ def mount_static(app) -> None:
     app.mount("/static", StaticFiles(directory=str(_STATIC)), name="static")
 
 
+def _render(request: Request, name: str, context: dict, status: int = 200) -> HTMLResponse:
+    """Отрендерить шаблон с базовым контекстом."""
+    return templates.TemplateResponse(
+        request, name, {**context, "format_rub": format_rub}, status_code=status
+    )
+
+
 @router.get("/", response_class=HTMLResponse)
 async def index(
     request: Request, session: AsyncSession = Depends(get_session)
 ) -> HTMLResponse:
-    """Главная страница: обзор, товары, сравнение, импорты."""
+    """Обзор: последние импорты, счётчики, быстрые ссылки."""
     runs = (
         (await session.execute(select(ParseRun).order_by(ParseRun.id.desc()).limit(10)))
         .scalars()
         .all()
     )
-    observations = (
-        await session.execute(select(Observation).order_by(Observation.id.desc()).limit(20))
-    ).scalars().all()
-    return templates.TemplateResponse(
+    observation_count = await session.scalar(select(func.count()).select_from(Observation))
+    product_count = await session.scalar(
+        select(func.count()).select_from(ProductMatch).where(
+            ProductMatch.status == MatchStatus.CONFIRMED
+        )
+    )
+    return _render(
         request,
         "index.html",
-        {"runs": runs, "observations": observations, "title": "PriceScope · Обзор"},
+        {
+            "title": "PriceScope · Обзор",
+            "runs": runs,
+            "observation_count": observation_count or 0,
+            "product_count": product_count or 0,
+            "active": "overview",
+        },
+    )
+
+
+async def _observation_page(
+    session: AsyncSession,
+    *,
+    query: str,
+    store_code: str,
+    category: str,
+    page: int,
+    page_size: int,
+) -> dict:
+    """Выборка observation с фильтрами и пагинацией."""
+    conditions = []
+    if query:
+        conditions.append(Observation.name.ilike(f"%{query}%"))
+    if store_code:
+        conditions.append(Observation.store_code == store_code)
+    if category:
+        conditions.append(Observation.category_path == category)
+    stmt = select(Observation)
+    if conditions:
+        stmt = stmt.where(*conditions)
+    total = await session.scalar(
+        select(func.count()).select_from(Observation).where(*conditions)
+    )
+    rows = (
+        (
+            await session.execute(
+                stmt.order_by(Observation.observed_at.desc())
+                .limit(page_size)
+                .offset((page - 1) * page_size)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return Pagination(page=page, page_size=page_size).envelope(total or 0, list(rows))
+
+
+@router.get("/products", response_class=HTMLResponse)
+async def products_page(request: Request) -> HTMLResponse:
+    """Страница каталога с фильтрами (фрагмент подгружается HTMX)."""
+    return _render(
+        request,
+        "products.html",
+        {"title": "PriceScope · Товары", "active": "products"},
     )
 
 
@@ -51,15 +119,211 @@ async def products_fragment(
     request: Request,
     query: str = "",
     store_code: str = "",
+    category: str = "",
+    page: int = 1,
+    page_size: int = 20,
     session: AsyncSession = Depends(get_session),
 ) -> HTMLResponse:
-    """HTMX-фрагмент таблицы товаров (без перезагрузки страницы)."""
-    stmt = select(Observation)
-    if query:
-        stmt = stmt.where(Observation.name.ilike(f"%{query}%"))
+    """HTMX-фрагмент таблицы товаров."""
+    result = await _observation_page(
+        session,
+        query=query,
+        store_code=store_code,
+        category=category,
+        page=max(1, page),
+        page_size=min(200, max(1, page_size)),
+    )
+    return _render(
+        request,
+        "fragments/products.html",
+        {"result": result, "query": query, "store_code": store_code, "category": category},
+    )
+
+
+@router.get("/product", response_class=HTMLResponse)
+async def product_card(
+    request: Request,
+    external_id: str,
+    store_code: str = "",
+    session: AsyncSession = Depends(get_session),
+) -> HTMLResponse:
+    """Карточка товара: атрибуты, история цен, график."""
+    conditions = [Observation.external_id == external_id]
     if store_code:
-        stmt = stmt.where(Observation.store_code == store_code)
-    rows = (await session.execute(stmt.order_by(Observation.id.desc()).limit(100))).scalars().all()
-    return templates.TemplateResponse(
-        request, "fragments/products.html", {"rows": rows}
+        conditions.append(Observation.store_code == store_code)
+    rows = (
+        (
+            await session.execute(
+                select(Observation).where(*conditions).order_by(Observation.observed_at)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if not rows:
+        return _render(
+            request,
+            "product.html",
+            {"title": "Товар не найден", "observation": None, "chart": "", "active": "products"},
+            status=404,
+        )
+    points = [(row.observed_at.strftime("%d.%m"), row.price_minor) for row in rows]
+    return _render(
+        request,
+        "product.html",
+        {
+            "title": f"PriceScope · {rows[-1].name}",
+            "observation": rows[-1],
+            "history": list(reversed(rows)),
+            "chart": _price_svg(points),
+            "active": "products",
+        },
+    )
+
+
+@router.get("/compare", response_class=HTMLResponse)
+async def compare_page(
+    request: Request,
+    query: str = "",
+    lat: float = 55.3925,
+    lon: float = 36.7323,
+    session: AsyncSession = Depends(get_session),
+) -> HTMLResponse:
+    """Сравнение цен в магазинах рядом с точкой."""
+    rows = []
+    if query:
+        rows = await compare_prices(session, None, lat, lon, query)
+    return _render(
+        request,
+        "compare.html",
+        {
+            "title": "PriceScope · Сравнение",
+            "rows": rows,
+            "query": query,
+            "lat": lat,
+            "lon": lon,
+            "store_names": {
+                "lenta": "Лента",
+                "pyaterochka": "Пятёрочка",
+                "manual": "Ручной импорт",
+            },
+            "active": "compare",
+        },
+    )
+
+
+@router.get("/imports", response_class=HTMLResponse)
+async def imports_page(
+    request: Request, page: int = 1, session: AsyncSession = Depends(get_session)
+) -> HTMLResponse:
+    """Журнал импортов."""
+    total = await session.scalar(select(func.count()).select_from(ParseRun))
+    rows = (
+        (
+            await session.execute(
+                select(ParseRun)
+                .order_by(ParseRun.id.desc())
+                .limit(20)
+                .offset((max(1, page) - 1) * 20)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return _render(
+        request,
+        "imports.html",
+        {
+            "title": "PriceScope · Импорты",
+            "result": Pagination(page=max(1, page), page_size=20).envelope(total or 0, list(rows)),
+            "active": "imports",
+        },
+    )
+
+
+@router.get("/matches", response_class=HTMLResponse)
+async def matches_page(
+    request: Request, session: AsyncSession = Depends(get_session)
+) -> HTMLResponse:
+    """Очередь спорных сопоставлений товаров."""
+    rows = (
+        (
+            await session.execute(
+                select(ProductMatch)
+                .where(ProductMatch.status == MatchStatus.REVIEW)
+                .order_by(ProductMatch.score.desc())
+                .limit(50)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return _render(
+        request,
+        "matches.html",
+        {"title": "PriceScope · Совпадения", "rows": rows, "active": "matches"},
+    )
+
+
+@router.post("/viewer/matches/{match_id}/decide", response_class=HTMLResponse)
+async def match_decide(
+    request: Request,
+    match_id: int,
+    confirm: bool = True,
+    session: AsyncSession = Depends(get_session),
+) -> HTMLResponse:
+    """Подтвердить/отклонить совпадение и вернуть обновлённую строку."""
+    match = await repo.update_match_decision(session, match_id, confirm, "viewer")
+    if match is None:
+        return _render(request, "fragments/match_row.html", {"row": None})
+    await repo.audit(session, "match.decide", "", match_id=match_id, confirm=confirm)
+    await session.commit()
+    return _render(request, "fragments/match_row.html", {"row": match})
+
+
+@router.get("/settings", response_class=HTMLResponse)
+async def settings_page(request: Request) -> HTMLResponse:
+    """Информация о локальном режиме и подключении."""
+    return _render(
+        request,
+        "settings.html",
+        {"title": "PriceScope · Настройки", "active": "settings"},
+    )
+
+
+def _price_svg(points: list[tuple[str, int]], width: int = 640, height: int = 180) -> str:
+    """Простой SVG-график цены без внешних JS-библиотек."""
+    if not points:
+        return ""
+    prices = [price for _, price in points]
+    low, high = min(prices), max(prices)
+    span = high - low or 1
+    pad_x, pad_y = 46, 22
+    plot_w, plot_h = width - pad_x - 12, height - pad_y - 26
+
+    def x(index: int) -> float:
+        return pad_x + (plot_w * index / max(1, len(points) - 1))
+
+    def y(price: int) -> float:
+        return pad_y + plot_h - (plot_h * (price - low) / span)
+
+    line = " ".join(f"{x(i):.1f},{y(price):.1f}" for i, (_, price) in enumerate(points))
+    dots = "".join(
+        f'<circle cx="{x(i):.1f}" cy="{y(price):.1f}" r="2.5" class="dot"/>'
+        for i, (_, price) in enumerate(points)
+    )
+    axis = (
+        f'<line x1="{pad_x}" y1="{pad_y + plot_h}" x2="{width - 12}" '
+        f'y2="{pad_y + plot_h}" class="axis"/>'
+    )
+    labels = (
+        f'<text x="4" y="{pad_y + 8}" class="label">{escape(format_rub(high))}</text>'
+        f'<text x="4" y="{pad_y + plot_h}" class="label">{escape(format_rub(low))}</text>'
+        f'<text x="{pad_x}" y="{height - 4}" class="label">{escape(points[0][0])}</text>'
+        f'<text x="{width - 54}" y="{height - 4}" class="label">{escape(points[-1][0])}</text>'
+    )
+    return (
+        f'<svg class="price-chart" viewBox="0 0 {width} {height}" role="img" '
+        f'aria-label="График цены">'
+        f"{axis}<polyline points=\"{line}\" class=\"line\"/>{dots}{labels}</svg>"
     )

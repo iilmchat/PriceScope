@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Совпадения товаров</h1>
+<p class="muted">Пары с confidence 0.70–0.90 требуют решения человека. Оно используется и для сравнения, и как разметка датасета.</p>
+
+<table class="data" id="match-table">
+  <thead><tr><th>#</th><th>Наблюдение</th><th>Товар</th><th>Метод</th><th>Confidence</th><th>Решение</th></tr></thead>
+  <tbody>
+  {% for row in rows %}
+    {% include "fragments/match_row.html" %}
+  {% else %}
+    <tr><td colspan="6" class="muted">Очередь пуста.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

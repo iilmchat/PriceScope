@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Импорты</h1>
+<p class="muted">Журнал запусков парсеров: статус, счётчики и диагностика ошибок.</p>
+
+<table class="data">
+  <thead><tr><th>#</th><th>Магазин</th><th>Статус</th><th>Новых</th><th>Обновлено</th><th>Пропущено</th><th>Начало (UTC)</th><th>trace_id</th><th>Ошибка</th></tr></thead>
+  <tbody>
+  {% for run in result['items'] %}
+    <tr>
+      <td>{{ run.id }}</td><td>{{ run.store_code }}</td>
+      <td><span class="badge {{ 'ok' if run.status in ('success','partial') else 'bad' }}">{{ run.status }}</span></td>
+      <td>{{ run.new_count }}</td><td>{{ run.updated_count }}</td><td>{{ run.skipped_count }}</td>
+      <td>{{ run.started_at.strftime('%d.%m.%Y %H:%M') }}</td>
+      <td><code>{{ run.trace_id[:10] }}…</code></td>
+      <td>{{ run.error_code or '—' }}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="9" class="muted">Запусков пока нет.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<div class="pagination">
+  <span>Всего: {{ result.total }} · страница {{ result.page }} из {{ result.total_pages or 1 }}</span>
+  {% if result.page > 1 %}<a href="/imports?page={{ result.page - 1 }}">← Назад</a>{% endif %}
+  {% if result.has_next %}<a href="/imports?page={{ result.page + 1 }}">Вперёд →</a>{% endif %}
+</div>
+{% endblock %}

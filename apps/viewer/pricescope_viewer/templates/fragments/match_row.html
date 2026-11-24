@@ -1,0 +1,17 @@
+<tr id="match-{{ row.id }}">
+  <td>{{ row.id }}</td>
+  <td>#{{ row.observation_id }}</td>
+  <td>{{ row.product_id or '—' }}</td>
+  <td><span class="badge">{{ row.method }}</span></td>
+  <td>{{ '%.2f'|format(row.score) }}</td>
+  <td>
+  {% if row.status in ('auto', 'review') %}
+    <button class="button small" hx-post="/viewer/matches/{{ row.id }}/decide?confirm=true"
+            hx-target="#match-{{ row.id }}">Один товар</button>
+    <button class="button small ghost" hx-post="/viewer/matches/{{ row.id }}/decide?confirm=false"
+            hx-target="#match-{{ row.id }}">Разные</button>
+  {% else %}
+    <span class="badge {{ 'ok' if row.status == 'confirmed' else 'bad' }}">{{ row.status }}</span>
+  {% endif %}
+  </td>
+</tr>

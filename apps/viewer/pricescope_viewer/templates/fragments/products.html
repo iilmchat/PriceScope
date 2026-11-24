@@ -1,16 +1,33 @@
+{% set pagination = result %}
 <table class="data">
-  <thead><tr><th>Фото</th><th>Название</th><th>Магазин</th><th>Цена</th><th>Наблюдение</th></tr></thead>
+  <thead><tr><th>Фото</th><th>Название</th><th>Категория</th><th>Магазин</th><th>Цена</th><th>Наблюдение</th><th></th></tr></thead>
   <tbody>
-  {% for row in rows %}
+  {% for row in pagination['items'] %}
     <tr>
-      <td>{% if row.image_urls_json %}<img src="{{ row.image_urls_json[0] }}" alt="" loading="lazy">{% else %}—{% endif %}</td>
-      <td>{{ row.name }}</td>
-      <td>{{ row.store_code }}</td>
-      <td class="price">{{ '{:,.2f}'.format(row.price_minor / 100) }} ₽</td>
+      <td>{% if row.image_urls_json %}<img src="{{ row.image_urls_json[0] }}" alt="" loading="lazy">{% else %}<span class="muted">—</span>{% endif %}</td>
+      <td><strong>{{ row.name }}</strong><br><small class="muted">{{ row.package or '' }}</small></td>
+      <td>{{ row.category_path or '—' }}</td>
+      <td><span class="badge">{{ row.store_code }}</span></td>
+      <td class="price">{{ format_rub(row.price_minor) }}</td>
       <td>{{ row.observed_at.strftime('%d.%m.%Y %H:%M') }}</td>
+      <td><a href="/product?external_id={{ row.external_id }}&store_code={{ row.store_code }}">История →</a></td>
     </tr>
   {% else %}
-    <tr><td colspan="5" class="muted">Нет данных. Запустите импорт: <code>pricescope parse --store lenta</code></td></tr>
+    <tr><td colspan="7" class="muted">Нет данных. Измените фильтры или запустите импорт.</td></tr>
   {% endfor %}
   </tbody>
 </table>
+
+{% macro page_url(target_page) -%}
+  /viewer/fragments/products?query={{ query|urlencode }}&amp;store_code={{ store_code|urlencode }}&amp;category={{ category|urlencode }}&amp;page={{ target_page }}
+{%- endmacro %}
+
+<div class="pagination">
+  <span>Всего: {{ pagination.total }} · страница {{ pagination.page }} из {{ pagination.total_pages or 1 }}</span>
+  {% if pagination.page > 1 %}
+    <a hx-get="{{ page_url(pagination.page - 1) }}" hx-target="#product-table" href="{{ page_url(pagination.page - 1) }}">← Назад</a>
+  {% endif %}
+  {% if pagination.has_next %}
+    <a hx-get="{{ page_url(pagination.page + 1) }}" hx-target="#product-table" href="{{ page_url(pagination.page + 1) }}">Вперёд →</a>
+  {% endif %}
+</div>

@@ -17,7 +17,7 @@ RULES § 2.14 в `docs/development/reports/v0.1/Sxx_<name>.md`,
 | **S02** | `StoreParser` + registry; ParseContext; retry/rate-limit/circuit breaker; raw snapshot; unit-тесты | PL-009 | ✅ конвейер + фикстуры + 11 тестов |
 | **S03** | Lenta adapter (hub→categories→items→detail); фикстуры; CLI `parse`; импорт в SQLite | PL-001, PL-002, PL-010, PL-011 | ✅ живой импорт 3 товаров, повтор без дублей |
 | **S04** | Alembic (9 таблиц, stamp legacy-БД); пагинация/фильтры/сравнение; error envelope; контрактные тесты | — | ✅ API + миграции, 33 теста |
-| **S05** | Viewer: обзор, товары, карточка, сравнение, импорты, review; HTMX-фрагменты; QA-чеклист | — | локальный веб-UI |
+| **S05** | Viewer: обзор, товары, карточка, сравнение, импорты, review; HTMX-фрагменты; QA-чеклист | — | ✅ полный UI, 39 тестов |
 | **S06** | Pyaterochka adapter (Camoufox), captcha policy, manual CSV import, fixtures, safety-тесты | PL-003 | второй магазин в сравнении |
 | **S07** | Normalizer+blocking+matching, review queue, JSONL-экспорт + manifest, метрики качества | PL-006, PL-007 | датасет для моделей |
 | **S08** | Flutter: API client, search, card, compare, favorites, settings; web+android build; release v0.1.0 | — | клиент + релиз |
@@ -32,6 +32,7 @@ RULES § 2.14 в `docs/development/reports/v0.1/Sxx_<name>.md`,
 | S02 | ✅ Завершён — [отчёт](development/reports/v0.1/S02_parser_pipeline.md) |
 | S03 | ✅ Завершён — [отчёт](development/reports/v0.1/S03_lenta_adapter.md) |
 | S04 | ✅ Завершён — [отчёт](development/reports/v0.1/S04_api_migrations.md) |
-| S05–S08 | ⬜ Не начаты |
+| S05 | ✅ Завершён — [отчёт](development/reports/v0.1/S05_viewer_ui.md) |
+| S06–S08 | ⬜ Не начаты |
 
 Отчёты завершённых спринтов — в `docs/development/reports/v0.1/`.

@@ -11,10 +11,12 @@
   <header class="topbar">
     <a class="brand" href="/">PriceScope <span>v0.1</span></a>
     <nav>
-      <a href="/">Обзор</a>
-      <a href="#products">Товары</a>
-      <a href="#compare">Сравнение</a>
-      <a href="#imports">Импорты</a>
+      <a href="/" class="{% if active == 'overview' %}active{% endif %}">Обзор</a>
+      <a href="/products" class="{% if active == 'products' %}active{% endif %}">Товары</a>
+      <a href="/compare" class="{% if active == 'compare' %}active{% endif %}">Сравнение</a>
+      <a href="/imports" class="{% if active == 'imports' %}active{% endif %}">Импорты</a>
+      <a href="/matches" class="{% if active == 'matches' %}active{% endif %}">Совпадения</a>
+      <a href="/settings" class="{% if active == 'settings' %}active{% endif %}">Настройки</a>
     </nav>
   </header>
   <main>

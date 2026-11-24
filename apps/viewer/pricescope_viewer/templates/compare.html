@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Сравнение цен</h1>
+<p class="muted">Цены в разных магазинах рядом с выбранной точкой. Учитываются фасовка и расстояние до точки.</p>
+
+<form class="filters" method="get" action="/compare">
+  <input type="search" name="query" value="{{ query }}" placeholder="Название товара…" required>
+  <label>Широта <input type="number" step="0.0001" name="lat" value="{{ lat }}"></label>
+  <label>Долгота <input type="number" step="0.0001" name="lon" value="{{ lon }}"></label>
+  <button type="submit">Сравнить</button>
+</form>
+
+{% if query %}
+<section class="panel">
+  <h2>Результат для «{{ query }}»</h2>
+  <table class="data">
+    <thead><tr><th>Магазин</th><th>Товар</th><th>Цена</th><th>За кг/литр</th><th>Расстояние</th><th>Дата</th></tr></thead>
+    <tbody>
+    {% for row in rows %}
+      <tr class="{% if row.is_cheapest %}cheapest{% endif %}">
+        <td><strong>{{ store_names.get(row.store_code, row.store_code) }}</strong>
+            {% if row.is_cheapest %}<span class="badge ok">дешевле</span>{% endif %}</td>
+        <td>{{ row.name }}</td>
+        <td class="price">{{ format_rub(row.price_minor) }}</td>
+        <td>
+          {% if row.price_per_l_minor %}{{ format_rub(row.price_per_l_minor) }}/л{% endif %}
+          {% if row.price_per_kg_minor %}{{ format_rub(row.price_per_kg_minor) }}/кг{% endif %}
+          {% if not row.price_per_l_minor and not row.price_per_kg_minor %}—{% endif %}
+        </td>
+        <td>{% if row.distance_m is not none %}{{ row.distance_m }} м{% else %}—{% endif %}</td>
+        <td>{{ row.observed_at.strftime('%d.%m.%Y') }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="6" class="muted">Нет наблюдений по этому запросу. Запустите парсеры магазинов.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% if rows|length > 1 %}
+  <p class="muted">Разница с самым дешёвым предложением указана в API-поле <code>savings_pct</code>.</p>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

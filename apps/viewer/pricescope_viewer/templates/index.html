@@ -1,43 +1,39 @@
 {% extends "base.html" %}
 {% block content %}
+<h1>Обзор</h1>
+
 <section class="cards">
-  <div class="card"><h3>Наблюдений</h3><strong>{{ observations|length }}</strong><small>последние записи</small></div>
-  <div class="card"><h3>Импортов</h3><strong>{{ runs|length }}</strong><small>запусков парсера</small></div>
+  <div class="card"><h3>Наблюдений цен</h3><strong>{{ observation_count }}</strong><small>в локальной БД</small></div>
+  <div class="card"><h3>Подтверждённых товаров</h3><strong>{{ product_count }}</strong><small>сопоставления S07</small></div>
+  <div class="card"><h3>Импортов</h3><strong>{{ runs|length }}</strong><small>последние запуски</small></div>
   <div class="card"><h3>Режим</h3><strong>local</strong><small>SQLite · 127.0.0.1</small></div>
 </section>
 
-<section id="products">
-  <h2>Товары</h2>
-  <form class="filters" hx-get="/viewer/fragments/products" hx-target="#product-table" hx-trigger="input changed delay:250ms, load">
-    <input type="search" name="query" placeholder="Поиск по названию…" autocomplete="off">
-    <select name="store_code">
-      <option value="">Все магазины</option>
-      <option value="lenta">Лента</option>
-      <option value="pyaterochka">Пятёрочка</option>
-      <option value="manual">Ручной импорт</option>
-    </select>
-  </form>
-  <div id="product-table">{% include "fragments/products.html" %}</div>
+<section class="panel">
+  <h2>Быстрый старт</h2>
+  <ol class="steps">
+    <li><code>pricescope parse --store lenta --limit 3</code> — собрать цены</li>
+    <li><a href="/products">Товары</a> — поиск и фильтры по магазину/категории</li>
+    <li><a href="/compare?query=РЕКСОНА">Сравнение</a> — цены в разных магазинах</li>
+    <li><a href="/imports">Импорты</a> — статус и диагностика запусков</li>
+  </ol>
 </section>
 
-<section id="compare">
-  <h2>Сравнение цен</h2>
-  <p class="muted">Выберите товар в таблице, чтобы увидеть цены по магазинам и историю.
-     Полный интерфейс сравнения — спринт S05.</p>
-</section>
-
-<section id="imports">
-  <h2>Импорты</h2>
+<section class="panel">
+  <h2>Последние импорты</h2>
   <table>
-    <thead><tr><th>#</th><th>Магазин</th><th>Статус</th><th>Новых</th><th>Ошибка</th></tr></thead>
+    <thead><tr><th>#</th><th>Магазин</th><th>Статус</th><th>Новых</th><th>Обновлено</th><th>Ошибка</th></tr></thead>
     <tbody>
     {% for run in runs %}
-      <tr><td>{{ run.id }}</td><td>{{ run.store_code }}</td><td>{{ run.status }}</td>
-          <td>{{ run.new_count }}</td><td>{{ run.error_code or '—' }}</td></tr>
+      <tr><td>{{ run.id }}</td><td>{{ run.store_code }}</td>
+          <td><span class="badge {{ 'ok' if run.status in ('success','partial') else 'bad' }}">{{ run.status }}</span></td>
+          <td>{{ run.new_count }}</td><td>{{ run.updated_count }}</td>
+          <td>{{ run.error_code or '—' }}</td></tr>
     {% else %}
-      <tr><td colspan="5" class="muted">Импортов пока нет. Запустите: <code>pricescope parse --store lenta</code></td></tr>
+      <tr><td colspan="6" class="muted">Импортов пока нет. Запустите парсер (см. быстрый старт).</td></tr>
     {% endfor %}
     </tbody>
   </table>
+  <p><a href="/imports">Весь журнал →</a></p>
 </section>
 {% endblock %}

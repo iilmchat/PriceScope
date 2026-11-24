@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Товары</h1>
+<p class="muted">Поиск по названию, фильтр по магазину и категории. Таблица обновляется без перезагрузки страницы.</p>
+
+<form class="filters" hx-get="/viewer/fragments/products" hx-target="#product-table"
+      hx-trigger="input changed delay:250ms, load">
+  <input type="search" name="query" placeholder="Название товара…" autocomplete="off">
+  <select name="store_code">
+    <option value="">Все магазины</option>
+    <option value="lenta">Лента</option>
+    <option value="pyaterochka">Пятёрочка</option>
+    <option value="manual">Ручной импорт</option>
+  </select>
+  <input type="search" name="category" placeholder="Категория…">
+  <button type="submit">Найти</button>
+</form>
+
+<div id="product-table"></div>
+{% endblock %}

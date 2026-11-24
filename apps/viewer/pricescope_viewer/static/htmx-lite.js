@@ -1,7 +1,8 @@
 /*
- * Минимальная офлайн-реализация HTMX-атрибутов для локального viewer (S05).
- * Поддерживает hx-get + hx-target + hx-trigger="input changed delay:250ms, load".
- * В S05 планируется замена на полный HTMX из static/vendor/.
+ * Минимальная офлайн-реализация HTMX-атрибутов для локального viewer.
+ * Поддерживает hx-get / hx-post + hx-target + hx-trigger (debounce, load).
+ * Делегирование на document — новые фрагменты работают без перепривязки.
+ * В S05+ планируется замена на полный локальный vendor-HTMX.
  */
 (function () {
   function collect(form) {
@@ -11,31 +12,61 @@
     });
     return data.toString();
   }
+
   async function load(el) {
-    var url = el.getAttribute('hx-get');
-    var target = document.querySelector(el.getAttribute('hx-target'));
-    if (!url || !target) return;
-    var query = el.tagName === 'FORM' ? collect(el) : '';
+    var target = document.querySelector(el.getAttribute('hx-target') || '');
+    if (!target) return;
+    var isPost = el.hasAttribute('hx-post');
+    var rawUrl = el.getAttribute(isPost ? 'hx-post' : 'hx-get');
+    if (!rawUrl) return;
+    var url = rawUrl;
+    var options = { headers: { 'X-Requested-With': 'htmx-lite' } };
+    if (el.tagName === 'FORM') {
+      var query = collect(el);
+      if (query) url += (url.indexOf('?') === -1 ? '?' : '&') + query;
+    }
+    if (isPost) {
+      options.method = 'POST';
+    }
     try {
-      var response = await fetch(url + (query ? '?' + query : ''), {
-        headers: { 'X-Requested-With': 'htmx-lite' },
-      });
-      if (response.ok) target.innerHTML = await response.text();
+      var response = await fetch(url, options);
+      if (response.ok) {
+        target.innerHTML = await response.text();
+      } else {
+        target.innerHTML = '<p class="muted">Ошибка запроса: ' + response.status + '</p>';
+      }
     } catch (e) {
       target.innerHTML = '<p class="muted">Не удалось загрузить данные: ' + e.message + '</p>';
     }
   }
-  document.querySelectorAll('[hx-get]').forEach(function (el) {
-    var trigger = el.getAttribute('hx-trigger') || '';
-    if (trigger.indexOf('load') !== -1) load(el);
-    if (el.tagName === 'FORM') {
-      var timer;
-      el.addEventListener('input', function () {
-        clearTimeout(timer);
-        timer = setTimeout(function () { load(el); }, 250);
-      });
-      el.addEventListener('change', function () { load(el); });
-      el.addEventListener('submit', function (e) { e.preventDefault(); load(el); });
-    }
+
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest('[hx-get], [hx-post]');
+    if (!el || el.tagName === 'FORM') return;
+    e.preventDefault();
+    load(el);
+  });
+
+  document.addEventListener('input', function (e) {
+    var form = e.target.closest('form[hx-get]');
+    if (!form) return;
+    clearTimeout(form._hxTimer);
+    form._hxTimer = setTimeout(function () { load(form); }, 250);
+  });
+
+  document.addEventListener('change', function (e) {
+    var form = e.target.closest('form[hx-get]');
+    if (form) load(form);
+  });
+
+  document.addEventListener('submit', function (e) {
+    var form = e.target.closest('form[hx-get], form[hx-post]');
+    if (!form) return;
+    e.preventDefault();
+    load(form);
+  });
+
+  document.querySelectorAll('[hx-trigger~="load"]').forEach(function (el) {
+    load(el);
   });
 })();
