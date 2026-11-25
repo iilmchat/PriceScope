@@ -23,6 +23,7 @@ from pricescope_api.schemas import (
     ExportRequest,
     ImportRequest,
 )
+from pricescope_api.search import matches
 
 api = APIRouter(prefix="/api/v1")
 
@@ -71,6 +72,21 @@ async def list_stores(session: AsyncSession = Depends(get_session)) -> dict:
     )
 
 
+@api.get("/categories")
+async def list_categories(session: AsyncSession = Depends(get_session)) -> dict:
+    """Справочник категорий для выпадающего списка фильтра."""
+    rows = (
+        await session.execute(
+            select(repo.Observation.category_path, func.count())
+            .where(repo.Observation.category_path.is_not(None))
+            .where(repo.Observation.category_path != "")
+            .group_by(repo.Observation.category_path)
+            .order_by(repo.Observation.category_path)
+        )
+    ).all()
+    return ok([{"name": name, "count": count} for name, count in rows])
+
+
 @api.get("/products")
 async def list_products(
     query: str = "",
@@ -82,29 +98,28 @@ async def list_products(
     session: AsyncSession = Depends(get_session),
 ) -> dict:
     """Поиск канонических товаров с фильтрами, сортировкой и пагинацией."""
+    # Текстовые фильтры — в Python: SQLite LOWER() не понимает кириллицу
     conditions: list[Any] = []
-    if query:
-        conditions.append(Product.canonical_name.ilike(f"%{query}%"))
     if category:
         conditions.append(Product.category_path == category)
-    if brand:
-        conditions.append(Product.brand.ilike(f"%{brand}%"))
 
     stmt = select(Product)
     if conditions:
         stmt = stmt.where(*conditions)
-    total = await session.scalar(select(func.count()).select_from(Product).where(*conditions))
-    sort_column: Any = {
-        "id": Product.id,
-        "name": Product.canonical_name,
-        "created": Product.created_at,
+    rows = list((await session.execute(stmt)).scalars().all())
+    if query:
+        rows = [item for item in rows if matches(item.canonical_name, query)]
+    if brand:
+        rows = [item for item in rows if matches(item.brand, brand)]
+
+    total = len(rows)
+    sort_key = {
+        "id": lambda item: item.id,
+        "name": lambda item: item.canonical_name.casefold(),
+        "created": lambda item: item.created_at,
     }[sort]
-    stmt = stmt.order_by(sort_column.asc() if order == "asc" else sort_column.desc())
-    rows = (
-        (await session.execute(stmt.limit(pagination.page_size).offset(pagination.offset)))
-        .scalars()
-        .all()
-    )
+    rows.sort(key=sort_key, reverse=order == "desc")
+    rows = rows[pagination.offset : pagination.offset + pagination.page_size]
     return ok(pagination.envelope(total or 0, [_product_dto(p) for p in rows]))
 
 

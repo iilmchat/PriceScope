@@ -12,7 +12,12 @@
     <option value="pyaterochka">Пятёрочка</option>
     <option value="manual">Ручной импорт</option>
   </select>
-  <input type="search" name="category" placeholder="Категория…">
+  <select name="category">
+    <option value="">Все категории</option>
+    {% for category in categories %}
+      <option value="{{ category.name }}">{{ category.name }} ({{ category.count }})</option>
+    {% endfor %}
+  </select>
   <button type="submit">Найти</button>
 </form>
 

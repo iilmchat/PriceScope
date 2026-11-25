@@ -119,7 +119,7 @@ def test_collect_leaves():
             "categories": [{"id": 2, "name": "Уход"}],
         }
     ]
-    assert collect_leaves(tree) == [(2, "Красота/Уход")]
+    assert collect_leaves(tree) == [("2", "Красота/Уход")]
 
 
 class _FakeStorage:

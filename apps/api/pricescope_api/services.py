@@ -8,10 +8,17 @@ import os
 from contextlib import AsyncExitStack
 from datetime import UTC, datetime
 from math import asin, cos, radians, sin, sqrt
+from pathlib import Path
 from typing import Any
 
 import httpx
-from pricescope_core import ParseStatus, extract_measure, sha256_text
+from pricescope_core import (
+    ParseStatus,
+    extract_measure,
+    normalize_name,
+    sha256_text,
+    tokenize,
+)
 from pricescope_ml.matching import (
     MODEL_VERSION,
     MatchCandidate,
@@ -30,6 +37,7 @@ from pricescope_api import repositories as repo
 from pricescope_api.config import Settings
 from pricescope_api.errors import ApiError
 from pricescope_api.logging import current_trace_id, get_logger
+from pricescope_api.search import matches
 
 logger = get_logger(__name__)
 
@@ -190,11 +198,13 @@ async def compare_prices(
     stmt = select(repo.Observation)
     if product_id is not None:
         stmt = stmt.where(repo.Observation.product_id == product_id)
-    else:
-        stmt = stmt.where(repo.Observation.name.ilike(f"%{query}%"))
-    observations = (
-        await session.execute(stmt.order_by(repo.Observation.observed_at.desc()).limit(1000))
-    ).scalars().all()
+    observations = list(
+        (await session.execute(stmt.order_by(repo.Observation.observed_at.desc())))
+        .scalars()
+        .all()
+    )
+    if query:
+        observations = [item for item in observations if matches(item.name, query)]
     if not observations:
         return []
 
@@ -269,6 +279,46 @@ def _unit_prices(observation: Any) -> tuple[int | None, int | None]:
         grams = float(value) if unit == "г" else float(value) * 1000
         return round(observation.price_minor * 1000 / grams), None
     return None, None
+
+
+async def import_csv_observations(
+    session: AsyncSession, path: Path, store_code: str = "manual"
+) -> dict[str, int]:
+    """Импорт ручного CSV в указанный магазин (легальный канал при блокировке)."""
+    from pricescope_parsers.manual.csv_parser import parse_csv_file
+
+    from pricescope_api.legacy_import import _file_sha256
+
+    path = Path(path)
+    if not path.is_file():
+        raise FileNotFoundError(f"CSV не найден: {path}")
+    sha = _file_sha256(path)
+    fetched_at = datetime.fromtimestamp(path.stat().st_mtime, UTC)
+    await repo.create_raw_snapshot(
+        session,
+        sha256=sha,
+        store_code=store_code,
+        uri=f"manual://{path.name}",
+        path=str(path),
+        parser_version="manual-csv-v1",
+        fetched_at=fetched_at,
+    )
+    await session.commit()
+
+    counts = {"new": 0, "updated": 0, "unchanged": 0, "skipped": 0}
+    for source in parse_csv_file(path, store_code=store_code):
+        observation = source.model_copy(update={"raw_ref": sha}).with_hash()
+        try:
+            async with session.begin_nested():
+                result, _ = await repo.upsert_observation(session, observation)
+            counts[result] += 1
+        except Exception as exc:
+            counts["skipped"] += 1
+            logger.warning("csv_row_skipped", error=str(exc), trace_id=current_trace_id())
+    await session.commit()
+    await repo.audit(session, "csv.import", current_trace_id(), store=store_code, counts=counts)
+    await session.commit()
+    return counts
 
 
 async def fetch_photos(
@@ -411,28 +461,44 @@ def _candidate(item: Any) -> MatchCandidate:
 
 
 async def run_matching(session: AsyncSession, limit: int = 2000) -> dict:
-    """Сопоставить observation с каноническими товарами (DESIGN_DATA_ML § 4)."""
-    products = (await session.execute(select(repo.Product))).scalars().all()
-    candidates = [
-        MatchCandidate(
+    """Сопоставить observation с каноническими товарами.
+
+    Масштабируемость: кандидаты индексируются по токенам названия, поэтому
+    каждая строка сравнивается только с товарами, имеющими общие слова.
+    Точное совпадение нормализованного названия связывается напрямую.
+    """
+    products = list((await session.execute(select(repo.Product))).scalars().all())
+    by_name: dict[str, Any] = {
+        normalize_name(product.canonical_name): product for product in products
+    }
+    token_index: dict[str, list[Any]] = {}
+    known_products = {product.id for product in products}
+
+    def index(product: Any) -> None:
+        candidate = MatchCandidate(
             name=product.canonical_name,
             package=(product.attributes_json or {}).get("package"),
             product_id=product.id,
         )
-        for product in products
-    ]
-    known_products = {candidate.product_id for candidate in candidates}
+        for token in set(tokenize(product.canonical_name)):
+            token_index.setdefault(token, []).append(candidate)
+
+    for product in products:
+        index(product)
+
     linked = (
         await session.execute(
             select(repo.Observation)
             .where(repo.Observation.product_id.is_not(None))
-            .limit(2000)
+            .limit(5000)
         )
     ).scalars().all()
     for item in linked:
-        if item.product_id not in known_products:
-            candidates.append(_candidate(item))
-            known_products.add(item.product_id)
+        if item.product_id is not None and item.product_id not in known_products:
+            linked_product: Any = await session.get(repo.Product, item.product_id)
+            if linked_product is not None:
+                index(linked_product)
+                known_products.add(item.product_id)
 
     unlinked = (
         await session.execute(
@@ -447,45 +513,47 @@ async def run_matching(session: AsyncSession, limit: int = 2000) -> dict:
     )
     counts = {"auto": 0, "review": 0, "new": 0}
 
-    for item in unlinked:
+    for processed, item in enumerate(unlinked, start=1):
         if item.id in already_matched:
             continue
+        normalized = normalize_name(item.name)
         current = _candidate(item)
-        best_score, best = -1.0, None
-        for candidate in candidates:
-            result = score_candidates(current, candidate)
-            if result.score > best_score:
-                best_score, best = result.score, candidate
 
-        decision = decide(MatchResult(score=best_score, method="lexical", same_measure=False))
-        status = decision.status
-        is_new = False
-        if best is not None and status in ("auto", "review") and best.product_id:
-            product_id, method, score = best.product_id, decision.method, best_score
+        exact_product: Any = by_name.get(normalized)
+        if exact_product is not None:
+            product_id, method, score, status = exact_product.id, "exact_name", 1.0, "auto"
         else:
-            product = await repo.upsert_product(
-                session,
-                item.name,
-                category_path=item.category_path,
-                attributes_json={"package": item.package},
-                image_urls_json=item.image_urls_json,
+            seen_ids: set[int] = set()
+            pool: list[MatchCandidate] = []
+            for token in set(tokenize(item.name)):
+                for candidate in token_index.get(token, []):
+                    if candidate.product_id not in seen_ids:
+                        seen_ids.add(candidate.product_id)
+                        pool.append(candidate)
+            best_score, best = -1.0, None
+            for candidate in pool:
+                result = score_candidates(current, candidate)
+                if result.score > best_score:
+                    best_score, best = result.score, candidate
+
+            decision = decide(
+                MatchResult(score=best_score, method="lexical", same_measure=False)
             )
-            product_id, method, score, status = product.id, "new_product", 1.0, "auto"
-            is_new = True
-            candidate = _candidate(item)
-            candidates.append(
-                MatchCandidate(
-                    name=candidate.name,
-                    store_code=candidate.store_code,
-                    external_id=candidate.external_id,
-                    package=candidate.package,
-                    price_minor=candidate.price_minor,
-                    image_url=candidate.image_url,
-                    observed_at=candidate.observed_at,
-                    product_id=product.id,
+            status = decision.status
+            if best is not None and status in ("auto", "review") and best.product_id:
+                product_id, method, score = best.product_id, decision.method, best_score
+            else:
+                product = await repo.upsert_product(
+                    session,
+                    item.name,
+                    category_path=item.category_path,
+                    attributes_json={"package": item.package},
+                    image_urls_json=item.image_urls_json,
                 )
-            )
-            known_products.add(product.id)
+                product_id, method, score, status = product.id, "new_product", 1.0, "auto"
+                by_name[normalize_name(item.name)] = product
+                index(product)
+                known_products.add(product.id)
 
         await repo.create_product_match(
             session,
@@ -498,7 +566,9 @@ async def run_matching(session: AsyncSession, limit: int = 2000) -> dict:
         )
         if status == "auto":
             item.product_id = product_id
-        counts["new" if is_new else status] += 1
+        counts["new" if method == "new_product" else status] += 1
+        if processed % 200 == 0:
+            await session.commit()
 
     await session.commit()
     await repo.audit(session, "matching.run", current_trace_id(), counts=counts)

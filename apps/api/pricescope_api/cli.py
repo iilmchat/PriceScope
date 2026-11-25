@@ -36,6 +36,12 @@ def build_parser() -> argparse.ArgumentParser:
     serve.add_argument("--host", default=None)
     serve.add_argument("--port", type=int, default=None)
 
+    import_csv = sub.add_parser("import-csv", help="импорт CSV с указанием магазина")
+    import_csv.add_argument("--file", required=True, help="путь к CSV")
+    import_csv.add_argument(
+        "--store", default="manual", help="код магазина (lenta/pyaterochka/manual)"
+    )
+
     photos = sub.add_parser("fetch-photos", help="дозагрузить фото по URL из БД")
     photos.add_argument("--limit", type=int, default=None, help="максимум observation за запуск")
     photos.add_argument("--concurrency", type=int, default=8, help="параллельные загрузки")
@@ -60,6 +66,7 @@ def build_parser() -> argparse.ArgumentParser:
     match_parser = sub.add_parser("match", help="сопоставление товаров")
     match_parser.add_argument("--review", action="store_true", help="очередь спорных пар")
     match_parser.add_argument("--run", action="store_true", help="запустить entity resolution")
+    match_parser.add_argument("--limit", type=int, default=2000, help="максимум строк за запуск")
     return parser
 
 
@@ -101,6 +108,20 @@ async def _async_command(args: argparse.Namespace) -> int:
             if result.get("error_code"):
                 print(f"Ошибка: {result['error_code']} — {result.get('error_message') or ''}")
                 return 1
+            return 0
+
+        if args.command == "import-csv":
+            from pathlib import Path
+
+            from pricescope_api.services import import_csv_observations
+
+            result = await import_csv_observations(
+                session, Path(args.file), store_code=args.store
+            )
+            print(
+                f"CSV {args.file} в {args.store}: new={result['new']} "
+                f"updated={result['updated']} skipped={result['skipped']}"
+            )
             return 0
 
         if args.command == "fetch-photos":
@@ -151,7 +172,7 @@ async def _async_command(args: argparse.Namespace) -> int:
             from pricescope_api.services import run_matching
 
             if args.run:
-                result = await run_matching(session)
+                result = await run_matching(session, limit=args.limit)
                 counts = result["counts"]
                 print(
                     f"Сопоставление: auto={counts['auto']} review={counts['review']} "

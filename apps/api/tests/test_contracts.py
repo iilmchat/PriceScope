@@ -75,6 +75,23 @@ async def test_validation_error_envelope(client):
     assert body["error"]["details"]["errors"]
 
 
+async def test_search_is_case_insensitive_substring(client, seeded):
+    """Кириллический поиск регистронезависим и ищет по подстроке."""
+    for query in ("рексона", "РЕКСОНА", "РекСоНа", "дезодорант"):
+        response = await client.get("/api/v1/products", params={"query": query})
+        assert response.json()["data"]["total"] == 1, query
+    missing = await client.get("/api/v1/products", params={"query": "НЕСУЩЕСТВУЮЩИЙ"})
+    assert missing.json()["data"]["total"] == 0
+
+
+async def test_categories_endpoint(client, seeded):
+    """Справочник категорий для выпадающего списка."""
+    response = await client.get("/api/v1/categories")
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data and any(item["name"] for item in data)
+
+
 async def test_product_pagination_and_sort(client, seeded):
     """Пагинация, фильтр, сортировка и метаданные страницы."""
     response = await client.get(

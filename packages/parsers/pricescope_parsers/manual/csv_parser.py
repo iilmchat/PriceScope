@@ -34,6 +34,8 @@ def parse_csv_file(path: Path, store_code: str = "manual") -> list[ProductObserv
                     int(float(row["old_price_minor"])) if row.get("old_price_minor") else None
                 ),
                 package=row.get("package"),
+                location_id=row.get("location_id"),
+                image_urls=[row["image_url"]] if row.get("image_url") else [],
                 observed_at=now,
                 raw_ref=f"manual:{path.name}",
                 parser_version="0.1.0",

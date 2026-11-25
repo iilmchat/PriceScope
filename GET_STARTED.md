@@ -162,7 +162,20 @@ pricescope parse --store pyaterochka
 pricescope parse --store manual --file data/products.csv
 ```
 
-### 5.4. Импорт исторических данных из Excel и папки photos
+### 5.4. Ручной импорт цен конкретного магазина
+
+Если живой парсер магазина недоступен (например, 5ka.ru блокирует `fetch()`),
+можно завести цены вручную через CSV. Обязательные колонки: `external_id,name,price_minor`
+(цена в копейках), опционально `category_path`, `package`, `location_id`, `image_url`.
+
+```powershell
+pricescope import-csv --file docs/examples/pyaterochka_manual.csv --store pyaterochka
+```
+
+Пример в репозитории содержит реальную цену товара из карточки 5ka.ru (99,99 ₽).
+Повторный импорт того же файла не создаёт дубликаты.
+
+### 5.5. Импорт исторических данных из Excel и папки photos
 
 Если в корне проекта уже лежит `lenta_prices.xlsx` из старых скриптов
 (и `photos/{id}.png`), перенесите их в БД одной командой:
@@ -181,7 +194,7 @@ pricescope import-legacy
 
 Результат для текущего файла: 31 228 товаров, 23 050 из них с локальным фото.
 
-### 5.5. Дозагрузка оставшихся фото
+### 5.6. Дозагрузка оставшихся фото
 
 У части товаров локального фото не было, но в Excel осталась ссылка на CDN.
 Скачайте их отдельной командой:
@@ -195,7 +208,7 @@ pricescope fetch-photos --concurrency 12
 Путь хранится в отдельном поле `photo_path` и **не меняет `content_hash` цены** —
 повторный импорт Excel не откатит результат. У товаров без URL останется заглушка.
 
-### 5.6. Проверка импорта
+### 5.7. Проверка импорта
 
 ```powershell
 python -c "import sqlite3; c=sqlite3.connect('data/pricescope.db'); print(c.execute('select count(*) from observations').fetchone()[0])"
@@ -217,7 +230,7 @@ pricescope serve --local
 | URL | Что показывает |
 | :--- | :--- |
 | `/` | обзор: счётчики и последние импорты |
-| `/products` | каталог с поиском, фильтрами и пагинацией |
+| `/products` | каталог с регистронезависимым поиском по подстроке, выпадающим списком категорий и пагинацией |
 | `/product?external_id=…&store_code=…` | карточка с историей цен и SVG-графиком |
 | `/compare?query=…` | сравнение цен в магазинах |
 | `/imports` | журнал запусков парсеров, ошибки, `trace_id` |

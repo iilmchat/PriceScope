@@ -1,26 +1,93 @@
 {% extends "base.html" %}
 {% block content %}
 {% if observation %}
+<nav class="crumbs"><a href="/products">Каталог</a> <span>/</span> {{ observation.category_path or 'Товар' }}</nav>
 <a href="/products">← К списку товаров</a>
 <h1>{{ observation.name }}</h1>
 
 <section class="product-head">
-  {% set img = observation.photo_path or (observation.image_urls_json[0] if observation.image_urls_json else none) %}{% if img %}<img class="product-photo" src="{{ img }}" alt="">{% endif %}
-  <div>
-    <p><strong>Цена:</strong> {{ format_rub(observation.price_minor) }}
-       {% if observation.old_price_minor %}<s>{{ format_rub(observation.old_price_minor) }}</s>{% endif %}</p>
-    <p><strong>Магазин:</strong> {{ observation.store_code }} · <strong>Точка:</strong> {{ observation.location_id or '—' }}</p>
-    <p><strong>Фасовка:</strong> {{ observation.package or '—' }} · <strong>Категория:</strong> {{ observation.category_path or '—' }}</p>
+  <div class="gallery">
+    {% if images %}
+      <img id="main-photo" class="product-photo" src="{{ images[0] }}" alt="{{ observation.name }}">
+      {% if images|length > 1 %}
+        <div class="thumbs">
+          {% for image in images %}
+            <button type="button" class="thumb" data-img="{{ image }}">
+              <img src="{{ image }}" alt="">
+            </button>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% else %}
+      <div class="product-photo no-photo">Нет фото</div>
+    {% endif %}
+  </div>
+
+  <div class="product-info">
+    <p class="muted">{{ observation.package or '—' }}</p>
+    <div class="price-block">
+      <span class="price-main">{{ format_rub(observation.price_minor) }}</span>
+      {% if observation.old_price_minor %}
+        <s class="price-old">{{ format_rub(observation.old_price_minor) }}</s>
+        {% if observation.old_price_minor > observation.price_minor %}
+          <span class="badge bad">−{{ ((observation.old_price_minor - observation.price_minor) * 100 / observation.old_price_minor)|round|int }}%</span>
+        {% endif %}
+      {% endif %}
+    </div>
+    <p class="muted">Магазин: <strong>{{ observation.store_code }}</strong> · точка {{ observation.location_id or '—' }}</p>
     <p class="muted">Последнее наблюдение: {{ observation.observed_at.strftime('%d.%m.%Y %H:%M') }} UTC</p>
     <a class="button" href="/compare?query={{ observation.name|urlencode }}">Сравнить цены →</a>
   </div>
 </section>
 
 <section class="panel">
+  <h2>Описание</h2>
+  <p>{{ observation.name }}. Категория: {{ observation.category_path or '—' }}.</p>
+  <p class="muted">Пищевая ценность и состав появятся после подключения структурированных данных карточки товара.</p>
+</section>
+
+<section class="panel">
+  <h2>Характеристики</h2>
+  <table class="data compact">
+    <tbody>
+      <tr><th>Фасовка</th><td>{{ observation.package or '—' }}</td></tr>
+      <tr><th>Вес нетто</th><td>{{ observation.net_weight_g if observation.net_weight_g is not none else '—' }} г</td></tr>
+      <tr><th>Вес брутто</th><td>{{ observation.gross_weight_g if observation.gross_weight_g is not none else '—' }} г</td></tr>
+      <tr><th>Категория</th><td>{{ observation.category_path or '—' }}</td></tr>
+      <tr><th>Магазин / точка</th><td>{{ observation.store_code }} / {{ observation.location_id or '—' }}</td></tr>
+      <tr><th>Источник (sha256)</th><td><code>{{ observation.raw_ref[:16] }}…</code></td></tr>
+    </tbody>
+  </table>
+</section>
+
+{% if comparison %}
+<section class="panel">
+  <h2>Сравнение цен в магазинах</h2>
+  <table class="data compact">
+    <thead><tr><th>Магазин</th><th>Цена</th><th>За кг/литр</th><th>Разница</th></tr></thead>
+    <tbody>
+    {% for row in comparison %}
+      <tr class="{% if row.is_cheapest %}cheapest{% endif %}">
+        <td>{{ row.store_code }} {% if row.is_cheapest %}<span class="badge ok">дешевле</span>{% endif %}</td>
+        <td class="price">{{ format_rub(row.price_minor) }}</td>
+        <td>
+          {% if row.price_per_l_minor %}{{ format_rub(row.price_per_l_minor) }}/л{% endif %}
+          {% if row.price_per_kg_minor %}{{ format_rub(row.price_per_kg_minor) }}/кг{% endif %}
+          {% if not row.price_per_l_minor and not row.price_per_kg_minor %}—{% endif %}
+        </td>
+        <td>{% if row.savings_pct > 0 %}+{{ row.savings_pct }}%{% else %}—{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+
+<section class="panel">
   <h2>История цен</h2>
   {{ chart|safe }}
   <table class="data compact">
-    <thead><tr><th>Дата (UTC)</th><th>Цена</th><th>Магазин</th><th>Источник (sha256)</th></tr></thead>
+    <thead><tr><th>Дата (UTC)</th><th>Цена</th><th>Магазин</th><th>Источник</th></tr></thead>
     <tbody>
     {% for row in history %}
       <tr><td>{{ row.observed_at.strftime('%d.%m.%Y %H:%M') }}</td>
@@ -31,8 +98,17 @@
     </tbody>
   </table>
 </section>
+
+<script>
+  document.querySelectorAll('.thumb').forEach(function (button) {
+    button.addEventListener('click', function () {
+      var main = document.getElementById('main-photo');
+      if (main) main.src = button.dataset.img;
+    });
+  });
+</script>
 {% else %}
 <h1>Товар не найден</h1>
-<p class="muted">Проверьте `external_id` или <a href="/products">вернитесь к списку</a>.</p>
+<p class="muted">Проверьте <code>external_id</code> или <a href="/products">вернитесь к списку</a>.</p>
 {% endif %}
 {% endblock %}

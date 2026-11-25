@@ -210,8 +210,27 @@ class CamoufoxBackend:
                 url_filter=lambda url: url.startswith("https://5d.5ka.ru/"),
             )
             await sniffer.start(self.ctx)
-            await self.page.goto(SITE_URL, wait_until="load", timeout=self.timeout_ms)
-            await self._ensure_no_captcha_on_page(self.page)
+            for attempt in range(3):
+                await self.page.goto(SITE_URL, wait_until="load", timeout=self.timeout_ms)
+                # Site — SPA: localStorage заполняется после загрузки роута/сети
+                with contextlib.suppress(Exception):
+                    await self.page.wait_for_selector(
+                        "next-route-announcer", state="attached", timeout=5000
+                    )
+                with contextlib.suppress(Exception):
+                    await self.page.wait_for_load_state("networkidle", timeout=5000)
+                await self._ensure_no_captcha_on_page(self.page)
+                try:
+                    raw_store = await _get_local_storage_item(self.page, "DeliveryPanelStore")
+                except Exception:
+                    raw_store = None
+                if raw_store:
+                    break
+                if attempt == 2:
+                    raise ParserError(
+                        "5ka.ru не отдал DeliveryPanelStore: выберите магазин доставки "
+                        "в браузере или проверьте, не появилась ли проверка"
+                    )
 
             observed = await sniffer.complete()
             headers: dict[str, set[str]] = {}
@@ -262,7 +281,11 @@ class CamoufoxBackend:
         api_class.__aexit__ = aexit
         api_class._warmup = warmup
         api_class._request = request
-        api_class._ensure_no_captcha_on_page = _check_page_captcha
+        async def check_captcha(self: Any, page: Any) -> None:
+            """Метод-обёртка для вызова через экземпляр PyaterochkaAPI."""
+            await _check_page_captcha(page)
+
+        api_class._ensure_no_captcha_on_page = check_captcha
         _COMPAT_INSTALLED = True
 
     async def _ensure_no_captcha_on_page(self, page: Any) -> None:
@@ -288,16 +311,19 @@ async def _save_json(ctx: ParseContext, data: dict, uri: str) -> None:
     ctx.last_raw_sha = await ctx.save_raw("pyaterochka", payload, uri)
 
 
-def collect_leaves(categories: list[dict], prefix: str = "") -> list[tuple[int, str]]:
-    """Конечные категории дерева 5ka: `[(id, путь)]`."""
-    leaves: list[tuple[int, str]] = []
+def collect_leaves(categories: list[dict], prefix: str = "") -> list[tuple[str, str]]:
+    """Конечные категории дерева 5ka: `[(SAP-код, путь)]`.
+
+    Идентификаторы категорий 5ka — строки вида `251C17046`, не целые числа.
+    """
+    leaves: list[tuple[str, str]] = []
     for category in categories:
         path = f"{prefix}/{category.get('name')}" if prefix else category.get("name", "")
         children = category.get("categories") or []
         if children:
             leaves.extend(collect_leaves(children, path))
         else:
-            leaves.append((int(category["id"]), path))
+            leaves.append((str(category["id"]), path))
     return leaves
 
 

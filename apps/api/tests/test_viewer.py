@@ -61,12 +61,18 @@ async def test_index_page(client, viewer_data):
 
 async def test_products_page_and_fragment(client, viewer_data):
     """Каталог и HTMX-фрагмент фильтруют по названию."""
-    assert (await client.get("/products")).status_code == 200
+    catalog = await client.get("/products")
+    assert catalog.status_code == 200
+    assert "Все категории" in catalog.text  # выпадающий список категорий
 
     response = await client.get("/viewer/fragments/products", params={"query": "РЕКСОНА"})
     assert response.status_code == 200
     assert "Дезодорант РЕКСОНА" in response.text
     assert "Всего: 3" in response.text
+
+    # кириллица, смешанный регистр, подстрока
+    mixed = await client.get("/viewer/fragments/products", params={"query": "рЕкСоН"})
+    assert "Всего: 3" in mixed.text
 
     empty = await client.get("/viewer/fragments/products", params={"store_code": "unknown"})
     assert "Нет данных" in empty.text

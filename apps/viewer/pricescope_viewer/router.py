@@ -9,10 +9,12 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from pricescope_api.config import get_settings
 from pricescope_api.db.models import Observation, ParseRun, ProductMatch
 from pricescope_api.db.session import get_session
 from pricescope_api.errors import ApiError
 from pricescope_api.pagination import Pagination
+from pricescope_api.search import matches
 from pricescope_api.services import compare_prices, decide_match, get_review_rows
 from pricescope_core import MatchStatus, format_rub
 from sqlalchemy import func, select
@@ -78,8 +80,6 @@ async def _observation_page(
 ) -> dict:
     """Выборка observation с фильтрами и пагинацией."""
     conditions = []
-    if query:
-        conditions.append(Observation.name.ilike(f"%{query}%"))
     if store_code:
         conditions.append(Observation.store_code == store_code)
     if category:
@@ -87,30 +87,43 @@ async def _observation_page(
     stmt = select(Observation)
     if conditions:
         stmt = stmt.where(*conditions)
-    total = await session.scalar(
-        select(func.count()).select_from(Observation).where(*conditions)
-    )
-    rows = (
+    rows = list(
         (
-            await session.execute(
-                stmt.order_by(Observation.observed_at.desc())
-                .limit(page_size)
-                .offset((page - 1) * page_size)
-            )
+            await session.execute(stmt.order_by(Observation.observed_at.desc()))
         )
         .scalars()
         .all()
     )
-    return Pagination(page=page, page_size=page_size).envelope(total or 0, list(rows))
+    # ILIKE в SQLite не понимает кириллицу — фильтруем через casefold
+    if query:
+        rows = [row for row in rows if matches(row.name, query)]
+    total = len(rows)
+    rows = rows[(page - 1) * page_size : (page - 1) * page_size + page_size]
+    return Pagination(page=page, page_size=page_size).envelope(total, rows)
 
 
 @router.get("/products", response_class=HTMLResponse)
-async def products_page(request: Request) -> HTMLResponse:
+async def products_page(
+    request: Request, session: AsyncSession = Depends(get_session)
+) -> HTMLResponse:
     """Страница каталога с фильтрами (фрагмент подгружается HTMX)."""
+    categories = (
+        await session.execute(
+            select(Observation.category_path, func.count())
+            .where(Observation.category_path.is_not(None))
+            .where(Observation.category_path != "")
+            .group_by(Observation.category_path)
+            .order_by(Observation.category_path)
+        )
+    ).all()
     return _render(
         request,
         "products.html",
-        {"title": "PriceScope · Товары", "active": "products"},
+        {
+            "title": "PriceScope · Товары",
+            "active": "products",
+            "categories": [{"name": name, "count": count} for name, count in categories],
+        },
     )
 
 
@@ -167,15 +180,34 @@ async def product_card(
             {"title": "Товар не найден", "observation": None, "chart": "", "active": "products"},
             status=404,
         )
+    latest = rows[-1]
     points = [(row.observed_at.strftime("%d.%m"), row.price_minor) for row in rows]
+
+    images: list[str] = []
+    for row in reversed(rows):
+        for url in row.image_urls_json or []:
+            if url and url not in images:
+                images.append(url)
+        if row.photo_path and row.photo_path not in images:
+            images.insert(0, row.photo_path)
+    if latest.photo_path and latest.photo_path in images:
+        images.remove(latest.photo_path)
+        images.insert(0, latest.photo_path)
+
+    settings = get_settings()
+    comparison = await compare_prices(
+        session, None, settings.default_lat, settings.default_lon, query=latest.name
+    )
     return _render(
         request,
         "product.html",
         {
-            "title": f"PriceScope · {rows[-1].name}",
-            "observation": rows[-1],
+            "title": f"PriceScope · {latest.name}",
+            "observation": latest,
             "history": list(reversed(rows)),
             "chart": _price_svg(points),
+            "images": images,
+            "comparison": comparison,
             "active": "products",
         },
     )
