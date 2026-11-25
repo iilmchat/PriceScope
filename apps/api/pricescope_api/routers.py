@@ -19,6 +19,7 @@ from pricescope_api.db.session import get_session
 from pricescope_api.errors import ApiError
 from pricescope_api.pagination import Pagination, paginate_params
 from pricescope_api.schemas import (
+    BulkDecideRequest,
     DecideRequest,
     ExportRequest,
     ImportRequest,
@@ -266,6 +267,23 @@ async def review_queue(
 ) -> dict:
     """Очередь спорных сопоставлений (0.70…0.90) с названиями и ценами."""
     return ok(await services.get_review_rows(session, pagination))
+
+
+@api.post("/matches/review/apply")
+async def apply_matches(
+    body: BulkDecideRequest, session: AsyncSession = Depends(get_session)
+) -> dict:
+    """Массовое подтверждение/отклонение пар по диапазону confidence."""
+    return ok(
+        await services.apply_bulk_decision(
+            session,
+            min_score=body.min_score,
+            max_score=body.max_score,
+            confirm=body.confirm,
+            limit=body.limit,
+            actor=body.actor,
+        )
+    )
 
 
 @api.post("/matches/{match_id}/decide")

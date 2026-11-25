@@ -10,7 +10,7 @@ import pytest
 from pricescope_api import repositories as repo
 from pricescope_api.config import get_settings
 from pricescope_api.db.models import Observation, Product, ProductMatch
-from pricescope_api.services import run_matching
+from pricescope_api.services import apply_bulk_decision, run_matching
 from pricescope_core import ProductObservation
 from sqlalchemy import select
 
@@ -71,6 +71,38 @@ async def test_matching_creates_auto_review_and_new(client, matched):
             )
         ).scalars().all()
         assert len(linked) == 2
+
+
+async def test_bulk_decision_confirms_and_links(client, matched):
+    """Массовое подтверждение связывает observation с товаром."""
+    maker = session_module.get_sessionmaker()
+    async with maker() as session:
+        result = await apply_bulk_decision(
+            session,
+            min_score=0.0,
+            max_score=1.0,
+            confirm=True,
+            limit=10,
+            actor="tester",
+        )
+    assert result["confirmed"] == 1
+    async with maker() as session:
+        matches = (await session.execute(select(ProductMatch))).scalars().all()
+        assert any(match.status == "confirmed" for match in matches)
+
+
+async def test_reevaluate_review_with_embeddings(client, matched):
+    """Повторный прогон с эмбеддингами не дублирует ProductMatch."""
+    maker = session_module.get_sessionmaker()
+    async with maker() as session:
+        result = await run_matching(
+            session, limit=50, embeddings=True, reevaluate_review=True
+        )
+    assert result["model_version"].startswith("lexical-v1+")
+    assert result["processed"] == 1  # только одна пара в review
+    async with maker() as session:
+        matches = (await session.execute(select(ProductMatch))).scalars().all()
+        assert len(matches) == 3  # 1 auto + 1 review + 1 new_product
 
 
 async def test_review_queue_and_decision(client, matched):

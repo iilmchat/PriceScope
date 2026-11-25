@@ -7,6 +7,10 @@
 ## [Unreleased]
 
 ### Added
+- Массовая обработка review: `POST /api/v1/matches/review/apply`, форма с диапазоном
+  confidence во viewer, кнопки «подтвердить/отклонить диапазон».
+- Текстовые эмбеддинги (`trigram-v1` по умолчанию, опционально SentenceTransformers)
+  и переоценка спорных пар: `pricescope match --run --embeddings --reevaluate-review`.
 - `pricescope import-csv --store <code>`: импорт ручного CSV в любой магазин (легальный
   канал при блокировке); пример — `docs/examples/pyaterochka_manual.csv`.
 - `GET /api/v1/categories`: справочник категорий для выпадающего списка во viewer.

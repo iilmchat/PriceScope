@@ -15,7 +15,12 @@ from pricescope_api.db.session import get_session
 from pricescope_api.errors import ApiError
 from pricescope_api.pagination import Pagination
 from pricescope_api.search import matches
-from pricescope_api.services import compare_prices, decide_match, get_review_rows
+from pricescope_api.services import (
+    apply_bulk_decision,
+    compare_prices,
+    decide_match,
+    get_review_rows,
+)
 from pricescope_core import MatchStatus, format_rub
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -279,11 +284,36 @@ async def matches_page(
 ) -> HTMLResponse:
     """Очередь спорных сопоставлений товаров."""
     result = await get_review_rows(session, Pagination(page=1, page_size=50))
-    rows = result["items"]
     return _render(
         request,
         "matches.html",
-        {"title": "PriceScope · Совпадения", "rows": rows, "active": "matches"},
+        {"title": "PriceScope · Совпадения", "result": result, "active": "matches"},
+    )
+
+
+@router.post("/viewer/matches/apply", response_class=HTMLResponse)
+async def matches_apply(
+    request: Request,
+    min_score: float = 0.0,
+    max_score: float = 1.0,
+    confirm: bool = True,
+    limit: int = 1000,
+    session: AsyncSession = Depends(get_session),
+) -> HTMLResponse:
+    """Массово решить пары в диапазоне confidence и обновить список."""
+    counts = await apply_bulk_decision(
+        session,
+        min_score=min_score,
+        max_score=max_score,
+        confirm=confirm,
+        limit=limit,
+        actor="viewer",
+    )
+    result = await get_review_rows(session, Pagination(page=1, page_size=50))
+    return _render(
+        request,
+        "fragments/match_list.html",
+        {"result": result, "banner": counts},
     )
 
 

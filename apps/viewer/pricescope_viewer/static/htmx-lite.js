@@ -5,15 +5,19 @@
  * В S05+ планируется замена на полный локальный vendor-HTMX.
  */
 (function () {
-  function collect(form) {
+  function collect(form, trigger) {
     var data = new URLSearchParams();
     form.querySelectorAll('input, select').forEach(function (el) {
       if (el.name) data.set(el.name, el.value);
     });
+    // value нажатой кнопки submit (например, confirm=true/false)
+    if (trigger && trigger.tagName === 'BUTTON' && trigger.name) {
+      data.set(trigger.name, trigger.value);
+    }
     return data.toString();
   }
 
-  async function load(el) {
+  async function load(el, trigger) {
     var target = document.querySelector(el.getAttribute('hx-target') || '');
     if (!target) return;
     var isPost = el.hasAttribute('hx-post');
@@ -22,7 +26,7 @@
     var url = rawUrl;
     var options = { headers: { 'X-Requested-With': 'htmx-lite' } };
     if (el.tagName === 'FORM') {
-      var query = collect(el);
+      var query = collect(el, trigger);
       if (query) url += (url.indexOf('?') === -1 ? '?' : '&') + query;
     }
     if (isPost) {
@@ -44,7 +48,7 @@
     var el = e.target.closest('[hx-get], [hx-post]');
     if (!el || el.tagName === 'FORM') return;
     e.preventDefault();
-    load(el);
+    load(el, e.target);
   });
 
   document.addEventListener('input', function (e) {

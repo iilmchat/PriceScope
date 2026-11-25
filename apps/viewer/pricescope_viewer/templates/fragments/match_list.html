@@ -1,0 +1,31 @@
+{% if banner %}
+<p class="banner">Обработано: подтверждено {{ banner.confirmed }}, отклонено {{ banner.rejected }},
+новых товаров создано {{ banner.created_products }}.</p>
+{% endif %}
+
+<table class="data" id="match-table">
+  <thead><tr><th>#</th><th>Товар слева</th><th>Товар справа</th><th>Метод</th><th>Confidence</th><th>Решение</th></tr></thead>
+  <tbody>
+  {% for row in result['items'] %}
+    <tr id="match-{{ row.id }}">
+      <td>{{ row.id }}</td>
+      <td>
+        <strong>{{ row.left_name }}</strong><br>
+        <small class="muted">{{ row.left_price_minor / 100 }} ₽</small>
+      </td>
+      <td>{{ row.right_name or '—' }}</td>
+      <td><span class="badge">{{ row.method }}</span></td>
+      <td>{{ '%.3f'|format(row.score) }}</td>
+      <td>
+        <button class="button small" hx-post="/viewer/matches/{{ row.id }}/decide?confirm=true"
+                hx-target="#match-{{ row.id }}">Один товар</button>
+        <button class="button small ghost" hx-post="/viewer/matches/{{ row.id }}/decide?confirm=false"
+                hx-target="#match-{{ row.id }}">Разные</button>
+      </td>
+    </tr>
+  {% else %}
+    <tr><td colspan="6" class="muted">Очередь пуста — все спорные пары решены.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+<p class="muted">В очереди: {{ result.total }} · показано {{ result['items']|length }}</p>

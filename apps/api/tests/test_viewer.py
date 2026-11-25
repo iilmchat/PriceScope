@@ -107,6 +107,17 @@ async def test_imports_settings_pages(client, viewer_data):
     assert "Политика парсинга" in (await client.get("/settings")).text
 
 
+async def test_bulk_apply_fragment(client, viewer_data):
+    """Массовая обработка через viewer возвращает обновлённый список."""
+    response = await client.post(
+        "/viewer/matches/apply",
+        params={"min_score": 0.0, "max_score": 1.0, "confirm": "true", "limit": 10},
+    )
+    assert response.status_code == 200
+    assert "Обработано" in response.text
+    assert "Очередь пуста" in response.text
+
+
 async def test_match_decision_flow(client, viewer_data):
     """Решение по совпадению обновляет строку через HTMX-фрагмент."""
     _, match_id = viewer_data

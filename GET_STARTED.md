@@ -234,7 +234,7 @@ pricescope serve --local
 | `/product?external_id=…&store_code=…` | карточка с историей цен и SVG-графиком |
 | `/compare?query=…` | сравнение цен в магазинах |
 | `/imports` | журнал запусков парсеров, ошибки, `trace_id` |
-| `/matches` | очередь спорных сопоставлений |
+| `/matches` | очередь спорных сопоставлений с массовыми действиями по диапазону confidence |
 | `/settings` | режим, пути, политика парсинга |
 
 **Доступ с телефона в той же сети** (только доверенная сеть!):
@@ -254,6 +254,9 @@ pricescope match --run
 
 # Посмотреть спорные пары
 pricescope match --review
+
+# Переоценить спорные пары текстовым эмбеддингом (по умолчанию trigram-v1, офлайн)
+pricescope match --run --limit 7000 --embeddings --reevaluate-review
 
 # Сформировать датасет (только при наличии пар двух магазинов)
 pricescope export --name product-matching --version 1

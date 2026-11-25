@@ -19,7 +19,9 @@ from pricescope_core import (
     sha256_text,
     tokenize,
 )
+from pricescope_ml.embeddings import cosine, get_provider
 from pricescope_ml.matching import (
+    AUTO_THRESHOLD,
     MODEL_VERSION,
     MatchCandidate,
     MatchResult,
@@ -460,13 +462,32 @@ def _candidate(item: Any) -> MatchCandidate:
     )
 
 
-async def run_matching(session: AsyncSession, limit: int = 2000) -> dict:
+async def run_matching(
+    session: AsyncSession,
+    limit: int = 2000,
+    *,
+    embeddings: bool = False,
+    reevaluate_review: bool = False,
+) -> dict:
     """Сопоставить observation с каноническими товарами.
 
     Масштабируемость: кандидаты индексируются по токенам названия, поэтому
     каждая строка сравнивается только с товарами, имеющими общие слова.
     Точное совпадение нормализованного названия связывается напрямую.
+    При `embeddings=True` спорные пары (0.70–0.90) дополнительно оцениваются
+    текстовым эмбеддингом; при `reeevaluate_review=True` пересматриваются
+    уже отложенные пары, а не только новые observation.
     """
+    provider = get_provider() if embeddings else None
+    embed_cache: dict[str, list[float]] = {}
+
+    def embedding(text: str) -> list[float]:
+        key = normalize_name(text)
+        if key not in embed_cache:
+            embed_cache[key] = provider.embed(text)  # type: ignore[union-attr]
+        return embed_cache[key]
+
+    model_version = MODEL_VERSION + (f"+{provider.version}" if provider else "")
     products = list((await session.execute(select(repo.Product))).scalars().all())
     by_name: dict[str, Any] = {
         normalize_name(product.canonical_name): product for product in products
@@ -500,22 +521,29 @@ async def run_matching(session: AsyncSession, limit: int = 2000) -> dict:
                 index(linked_product)
                 known_products.add(item.product_id)
 
+    all_matches = {
+        match.observation_id: match
+        for match in (await session.execute(select(repo.ProductMatch))).scalars().all()
+    }
+    stmt = select(repo.Observation).where(repo.Observation.product_id.is_(None))
+    if reevaluate_review:
+        review_ids = [
+            oid for oid, match in all_matches.items() if match.status == "review"
+        ]
+        if not review_ids:
+            return {"counts": {"auto": 0, "review": 0, "new": 0}, "processed": 0,
+                    "model_version": model_version}
+        stmt = stmt.where(repo.Observation.id.in_(review_ids))
+    else:
+        already = list(all_matches)
+        if already:
+            stmt = stmt.where(repo.Observation.id.notin_(already))
     unlinked = (
-        await session.execute(
-            select(repo.Observation)
-            .where(repo.Observation.product_id.is_(None))
-            .order_by(repo.Observation.observed_at.desc())
-            .limit(limit)
-        )
+        await session.execute(stmt.order_by(repo.Observation.observed_at.desc()).limit(limit))
     ).scalars().all()
-    already_matched = set(
-        (await session.execute(select(repo.ProductMatch.observation_id))).scalars().all()
-    )
     counts = {"auto": 0, "review": 0, "new": 0}
 
     for processed, item in enumerate(unlinked, start=1):
-        if item.id in already_matched:
-            continue
         normalized = normalize_name(item.name)
         current = _candidate(item)
 
@@ -540,8 +568,15 @@ async def run_matching(session: AsyncSession, limit: int = 2000) -> dict:
                 MatchResult(score=best_score, method="lexical", same_measure=False)
             )
             status = decision.status
+            method = decision.method
+            score = best_score
+            if provider is not None and status == "review" and best is not None:
+                similarity = cosine(embedding(item.name), embedding(best.name))
+                combined = 0.6 * best_score + 0.4 * max(0.0, similarity)
+                if combined >= AUTO_THRESHOLD and similarity >= 0.85:
+                    status, method, score = "auto", "text_embedding", round(combined, 3)
             if best is not None and status in ("auto", "review") and best.product_id:
-                product_id, method, score = best.product_id, decision.method, best_score
+                product_id = best.product_id
             else:
                 product = await repo.upsert_product(
                     session,
@@ -555,15 +590,24 @@ async def run_matching(session: AsyncSession, limit: int = 2000) -> dict:
                 index(product)
                 known_products.add(product.id)
 
-        await repo.create_product_match(
-            session,
-            item.id,
-            product_id,
-            method=method,
-            score=score,
-            status=status,
-            model_version=MODEL_VERSION,
-        )
+        existing = all_matches.get(item.id)
+        if existing is not None:  # пересмотр review — обновляем запись, не дублируем
+            existing.product_id = product_id
+            existing.method = method
+            existing.score = score
+            existing.status = status
+            existing.model_version = model_version
+        else:
+            match = await repo.create_product_match(
+                session,
+                item.id,
+                product_id,
+                method=method,
+                score=score,
+                status=status,
+                model_version=model_version,
+            )
+            all_matches[item.id] = match
         if status == "auto":
             item.product_id = product_id
         counts["new" if method == "new_product" else status] += 1
@@ -573,7 +617,67 @@ async def run_matching(session: AsyncSession, limit: int = 2000) -> dict:
     await session.commit()
     await repo.audit(session, "matching.run", current_trace_id(), counts=counts)
     await session.commit()
-    return {"counts": counts, "model_version": MODEL_VERSION, "processed": sum(counts.values())}
+    return {
+        "counts": counts,
+        "model_version": model_version,
+        "processed": sum(counts.values()),
+    }
+
+
+async def apply_bulk_decision(
+    session: AsyncSession,
+    *,
+    min_score: float,
+    max_score: float,
+    confirm: bool,
+    limit: int,
+    actor: str,
+) -> dict[str, int]:
+    """Массово подтвердить/отклонить пары в заданном диапазоне confidence."""
+    matches = (
+        await session.execute(
+            select(repo.ProductMatch)
+            .where(repo.ProductMatch.status == "review")
+            .where(repo.ProductMatch.score >= min_score)
+            .where(repo.ProductMatch.score <= max_score)
+            .order_by(repo.ProductMatch.score.desc())
+            .limit(limit)
+        )
+    ).scalars().all()
+
+    counts = {"confirmed": 0, "rejected": 0, "created_products": 0}
+    for match in matches:
+        match.status = "confirmed" if confirm else "rejected"
+        match.decided_by = actor
+        observation = await session.get(repo.Observation, match.observation_id)
+        if observation is None:
+            continue
+        if confirm and match.product_id is not None:
+            observation.product_id = match.product_id
+        elif not confirm:
+            # Отклонённая пара — отдельный канонический товар
+            product = await repo.upsert_product(
+                session,
+                observation.name,
+                category_path=observation.category_path,
+                attributes_json={"package": observation.package},
+                image_urls_json=observation.image_urls_json,
+            )
+            observation.product_id = product.id
+            match.product_id = product.id
+            counts["created_products"] += 1
+        counts["confirmed" if confirm else "rejected"] += 1
+    await session.commit()
+    await repo.audit(
+        session,
+        "matching.bulk_decide",
+        current_trace_id(),
+        confirm=confirm,
+        range=[min_score, max_score],
+        counts=counts,
+    )
+    await session.commit()
+    return counts
 
 
 async def get_review_rows(session: AsyncSession, pagination: Any) -> dict:

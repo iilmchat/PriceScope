@@ -113,6 +113,7 @@ pricescope serve --local
 | `pricescope fetch-photos` | дозагрузка фото по URL из БД (`--concurrency`, `--limit`) |
 | `pricescope serve --local [--host 127.0.0.1] [--port 8775]` | API + viewer |
 | `pricescope export --name product-matching --version 1` | выгрузить датасет JSONL + manifest |
+| `pricescope match --run [--embeddings --reevaluate-review]` | entity resolution и переоценка спорных пар |
 | `pricescope match --review` | показать очередь спорных сопоставлений |
 
 ---
@@ -129,7 +130,7 @@ pricescope serve --local
 | `GET` | `/api/v1/compare?product_id=&lat=&lon=` | сравнение цен в магазинах |
 | `POST` | `/api/v1/imports` | запуск импорта (idempotency key) |
 | `GET` | `/api/v1/imports/{id}` | статус импорта |
-| `GET` | `/api/v1/matches/review` · `POST /api/v1/matches/{id}/decide` | review сопоставлений |
+| `GET` | `/api/v1/matches/review` · `POST /api/v1/matches/{id}/decide` · `POST /api/v1/matches/review/apply` | review и массовые решения |
 | `POST` | `/api/v1/exports` · `GET /api/v1/exports/{id}/download` | датасеты |
 
 Формат ошибки: `{"success": false, "error": {"code", "message", "details"}, "trace_id": "..."}`.

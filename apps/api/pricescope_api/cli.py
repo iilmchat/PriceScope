@@ -67,6 +67,12 @@ def build_parser() -> argparse.ArgumentParser:
     match_parser.add_argument("--review", action="store_true", help="очередь спорных пар")
     match_parser.add_argument("--run", action="store_true", help="запустить entity resolution")
     match_parser.add_argument("--limit", type=int, default=2000, help="максимум строк за запуск")
+    match_parser.add_argument(
+        "--embeddings", action="store_true", help="переоценить спорные пары текстовым эмбеддингом"
+    )
+    match_parser.add_argument(
+        "--reevaluate-review", action="store_true", help="пересмотреть уже отложенные пары"
+    )
     return parser
 
 
@@ -172,7 +178,12 @@ async def _async_command(args: argparse.Namespace) -> int:
             from pricescope_api.services import run_matching
 
             if args.run:
-                result = await run_matching(session, limit=args.limit)
+                result = await run_matching(
+                    session,
+                    limit=args.limit,
+                    embeddings=args.embeddings,
+                    reevaluate_review=args.reevaluate_review,
+                )
                 counts = result["counts"]
                 print(
                     f"Сопоставление: auto={counts['auto']} review={counts['review']} "

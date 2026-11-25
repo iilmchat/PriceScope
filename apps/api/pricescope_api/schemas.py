@@ -138,6 +138,18 @@ class DecideRequest(BaseModel):
     actor: str = "local"
 
 
+class BulkDecideRequest(BaseModel):
+    """Массовое решение по очереди сопоставлений."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    min_score: float = Field(default=0.0, ge=0, le=1)
+    max_score: float = Field(default=1.0, ge=0, le=1)
+    confirm: bool
+    limit: int = Field(default=1000, ge=1, le=10000)
+    actor: str = "local"
+
+
 class ExportRequest(BaseModel):
     """Запрос на экспорт датасета."""
 
